@@ -1,0 +1,11 @@
+#!/bin/bash
+
+CURRENT_WORKSPACE=${1}
+CURRENT_PYTHONPATH=${CURRENT_WORKSPACE}
+
+cd "${CURRENT_WORKSPACE}"
+shift
+
+echo "Using: ${CURRENT_WORKSPACE}"
+
+PYTHONPATH="$CURRENT_PYTHONPATH" python3 tests/testSource.py $@ 
