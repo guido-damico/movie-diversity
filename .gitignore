@@ -1,0 +1,9 @@
+/test-reports
+.project
+.pydevproject
+/__pycache__
+pylint
+scraper.pyc
+/tests/__pycache__
+
+
