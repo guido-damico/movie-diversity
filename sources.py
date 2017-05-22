@@ -7,8 +7,10 @@ Source module for the MovieDiversity app.
 '''
 import sqlite3
 import logging
+from pprint import pformat
 import datetime
 import movieLogger
+import utils
 from contextlib import closing
 
 class Sources(object):
@@ -80,7 +82,7 @@ class Sources(object):
         # the standard Row factory
         self._conn.row_factory = sqlite3.Row
         cur = self._conn.cursor()
-        
+
         # need to enforce the foreign key constraints
         cur.execute("PRAGMA foreign_keys = ON;")
 
@@ -91,12 +93,12 @@ class Sources(object):
             assert len(allTables) == 5, \
                 "%s file should have 5 tables defined (found %d)." % (dbfile, len(allTables))
 
-            self._verifyFormat(allTables)
+            self._verifySchema(allTables)
 
         except AssertionError as ae:
             raise AssertionError("Failed db schema validation: execution will stop.\n" + ae.__str__())
 
-    def _verifyFormat(self, allTables = None):
+    def _verifySchema(self, allTables = None):
         """Verifies that the definitions of the db schema conforms to the
         expectations of this class.
         """
@@ -140,10 +142,11 @@ class Sources(object):
         return self._locations
 
     def getLocationData(self,
-                        location = "",
+                        locationName = "",
                         refresh = False):
-        """Given a location, it returns all the currently known data for that
-        location.
+        """Given a location name, it returns all the currently known data for that
+        location, in the form of a list of dictionaries.
+        
         If "Refresh" is set to True, or if there is no data in the cache,
         performs a new query to the db to get fresh data.
 
@@ -152,10 +155,10 @@ class Sources(object):
         connected to the given location.
         """
         if refresh or len(self._data) == 0:
-            self.logger.debug("Refreshing data for %s.", location)
+            self.logger.debug("Refreshing data for %s.", locationName)
 
             cur = self._conn.cursor()
-            cur.execute('SELECT s.id, s.name, url, title_xpath, active, l.name location_name ' + \
+            cur.execute('SELECT s.id, s.name, url, title_xpath, active, locations_ref, l.name location_name ' + \
                         'FROM locations l, sites s ' + \
                         'WHERE  s.locations_ref = l.id;')
             allData = cur.fetchall()
@@ -163,7 +166,18 @@ class Sources(object):
             for r in allData:
                 self._data.append({k: r[k] for k in r.keys()})
 
-        return [x for x in self._data if x['location_name'] == location]
+        return [x for x in self._data if x['location_name'] == locationName]
+
+    def getAllDbTitles(self):
+        """Returns a list of dictionaries {'id':..., 'title':...} for all titles in the db.
+        """
+        with (closing(self._conn.cursor())) as cur:
+            cur.execute("SELECT id, title FROM titles;")
+
+            rows = cur.fetchall()
+            output = [{'id': r['id'], 'title': r['title']} for r in rows]
+
+            return output
 
     def insertTitle(self, title = None, locationId = None):
         """Inserts a new title in the db.
@@ -171,18 +185,35 @@ class Sources(object):
 
         Returns the title primary key.
         """
+        newId = None
+        
         with (closing(self._conn.cursor())) as cur:
-            cur.execute("SELECT id FROM titles WHERE title = ? AND locations_ref = ?;", (title, locationId))
+            # check whether the title is similar to one already in
+            dbTitles = self.getAllDbTitles()
+            similar = [x for x in dbTitles if (utils.isSimilar(title, x['title']))]
 
-            titleId = cur.fetchone()
-            if titleId != None:
-                newId = titleId['id']
+            if len(similar) == 1:
+                # found a similar title already in
+                self.logger.debug("Found title '%s', similar to '%s' already in the db: using db version.", title, similar[0]['title'])
+                newId = similar[0]['id']
+
+            elif len(similar) > 1:
+                # found many similar titles in (?): can't proceed: log an error and move on
+                self.logger.error("Cannot insert title '%s', found the following one too similar already in the db:\n" +\
+                                   "%s" % pformat(similar))
             else:
-                cur.execute("INSERT INTO titles(title, locations_ref) VALUES (?, ?);", (title, locationId))
-                newId = cur.lastrowid
+                # bona-fide new title
+                cur.execute("SELECT id FROM titles WHERE title = ? AND locations_ref = ?;", (title, locationId))
+    
+                titleId = cur.fetchone()
+                if titleId != None:
+                    newId = titleId['id']
+                else:
+                    cur.execute("INSERT INTO titles(title, locations_ref) VALUES (?, ?);", (title, locationId))
+                    newId = cur.lastrowid
 
             return newId
-                
+
     def insertShow(self, titlesRef = None, date = None):
         """Inserts a new show for the given titles(id) on the specified date.
         If the same (titles_ref , date) tuple is already there, this is a no-op.

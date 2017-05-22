@@ -63,7 +63,8 @@ class testSource(unittest.TestCase):
             for data in placeData:
                 self.assertTrue(isinstance(data, type({})),
                                 "data for first element of %s should be a dictionary (was %s)" % (town, type(data)))
-                self.assertEqual(frozenset(data.keys()), frozenset(['id', 'name', 'url', 'title_xpath', 'active', 'location_name']),
+                self.assertEqual(frozenset(data.keys()),\
+                                 frozenset(['id', 'name', 'url', 'title_xpath', 'active', 'locations_ref', 'location_name']),
                                  "keys for first element of %s are not correct (found: %s)" % (town, data.keys()))
 
                 self.assertTrue(isinstance(data['name'], type("")),
@@ -150,5 +151,6 @@ if __name__ == "__main__":
         unittest.main()
     else:
         import xmlrunner
+        del sys.argv[1] # remove the exportXML flag, which is not to be passed to the runner
         unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'))
 

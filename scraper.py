@@ -12,17 +12,7 @@ import requests
 from lxml import html
 import sources
 import movieLogger
-
-
-def getMoviesTitlesFromData(url="", title_xpath=""):
-    """Function which given a URL an an xpath query to identify the titles of the movies on the
-    page returned by the URL, it returns a set of all the titles.
-    """
-    page = requests.get(url)
-    tree = html.fromstring(page.content)
-    titles = frozenset(tree.xpath(title_xpath))
-    return titles
-
+import utils
 
 class Scraper(object):
     """
@@ -33,7 +23,6 @@ class Scraper(object):
     """
     _source = None
     logger = None
-    similarityThreshold = 0.5
 
     def __init__(self, dbfile = None):
         """Builds a local instance of the Sources class and
@@ -42,63 +31,87 @@ class Scraper(object):
         self._source = sources.Sources(dbfile = dbfile)
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
 
-        self.logger.debug("Scraper instance inited.")
+        self.logger.info("Scraper instance inited.")
 
-    def getMoviesTitles(self, location=""):
-        """Given the sting name of a location, it returns a
+    def updateLocationMovies(self, locationName = None):
+        """Given a location name, fetches the data off the net and
+        populates the db. 
+        """
+        titles = set()
+
+        # Gets the movie titles
+        locationData = self._source.getLocationData(locationName = locationName)
+        assert isinstance(locationData, type([])), \
+               "Expected a list for locations, instead got %s" % type(locationData)
+        titles = self.getMoviesTitles(locationName = locationName)
+
+        # stores each title
+        for title in titles:
+            titleId = self._source.insertTitle(title, locationData[0]['locations_ref'])
+            self._source.insertShow(titleId)
+            self.logger.debug("Inserted a title and a show for '%s' in %s (%d) today.",\
+                              title, locationName, locationData[0]['locations_ref'])
+
+        # logs some information
+        self.logger.info("Inserted %d new shows for today in %s.", len(titles), locationName)
+
+    def getMoviesTitles(self, locationName = None):
+        """Given the id of a location, it returns a
         set of all movie titles playing there today.
         """
-        self.logger.debug("Looking for movie titles in %s.", location)
-        titles = frozenset([])
+        self.logger.info("Looking for movie titles in %s.", locationName)
 
-        data = self._source.getLocationData(location)
+        titles = set()
+
+        data = self._source.getLocationData(locationName)
+
         # for every active site in the list, get the titles and insert them in the output set
         for site in data:
             if site['active']:
-                titles = titles.union(getMoviesTitlesFromData(url = site['url'],
-                                                              title_xpath = site['title_xpath']))
+                titles = titles.union(self.getMoviesTitlesFromData(url = site['url'],
+                                                          title_xpath = site['title_xpath']))
+                self.logger.debug("Got titles from site %s, now I ha    ve %d in total.", site['name'], len(titles))
 
         # clean up before sending back
         return self.cleanupTitles(titles)
 
-    def isSimilar(self, title1 = "", title2 = ""):
-        """Given two strings, it returns True if their
-        similarity is closer than Scraper.similarityThreshold
+    def getMoviesTitlesFromData(self, url = "", title_xpath = ""):
+        """Function which given a URL and an xpath query to identify the titles of the movies on the
+        page returned by the URL, it returns a set of all the titles.
         """
-        # first, eliminate all whitespaces
-        title1 = "".join(title1.split())
-        title2 = "".join(title2.split())
+        self.logger.info("Querying %s ...", url)
 
-        # then count the letters which are the same
-        len1 = len(title1)
-        len2 = len(title2)
-        same = [x for x in range(0, min(len1, len2)) if title1[x] == title2[x]]
+        page = requests.get(url)
+        self.logger.debug("Returned status: %s.", page.status_code)
+        self.logger.debug("Got %d bytes back.", len(page.content))
 
-        # similarity ratio
-        ratio = len(same) / max(len1, len2)
-        self.logger.debug("Similarity between '%s' and '%s' is %.3f", title1, title2, ratio)
+        tree = html.fromstring(page.content)
+        titles = set(tree.xpath(title_xpath))
+        self.logger.info("Identified %d titles.", len(titles))
 
-        return ratio > self.similarityThreshold
+        return titles
 
     def cleanupTitles(self, titles = None):
         """Given a set of strings, it de-duplicates the ones
         which are similar enough.
+
         For instance "Star Wars: a new hope" and "Star Wars - A New Hope"
         should be deemed similar and reported only once.
         """
-        assert isinstance(titles, frozenset)
-        assert len(titles) > 0
+        assert isinstance(titles, set), "Expecting a set of titles, got %s" % type(titles)
+        if len(titles) == 0:
+            return set()
 
         # remove newlines --  some titles arrive in more than one line
         titlesList = [x.replace("\n", " ") for x in titles]
 
         # set of movies discarded as similar to other ones, captured here for debugging purposes
-        similar = frozenset([])
+        similar = set()
 
         for ptr in range(0, len(titlesList)):
             for cmp in range(ptr + 1, len(titlesList)):
-                if self.isSimilar(titlesList[ptr], titlesList[cmp]):
-                    similar = similar.union([titlesList[cmp]])
+                if utils.isSimilar(titlesList[ptr], titlesList[cmp]):
+                    similar.add(titlesList[cmp] + "|" + titlesList[ptr])
         self.logger.debug("Similar titles omitted:\n%s", similar)
 
         # omit the similar ones from the output
@@ -127,17 +140,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Init the logging system
     movieLogger.MovieLoggger().initLogger(level = args.logLevel)
+
     S = Scraper(dbfile = args.dbfile)
 
     allLocations = S._source.getAllLocations()
     S.logger.info("Locations definitions found for: %s", allLocations)
 
     S.logger.info("Looking for: %s...", args.location)
-    t = S.getMoviesTitles(args.location)
-    S.logger.info("%s - Got %d movies:", args.location.upper(), len(t))
-    S.logger.info(pformat(t))
+    t = S.updateLocationMovies(args.location)
+    S.logger.info("End run.")
 
-#    t = S.getMoviesTitles("Milano")
-#    S.logger.info("MILANO - Got %d movies:", (len(t)))
-#    S.logger.info(pformat(t))
