@@ -70,7 +70,7 @@ class Scraper(object):
             if site['active']:
                 titles = titles.union(self.getMoviesTitlesFromData(url = site['url'],
                                                           title_xpath = site['title_xpath']))
-                self.logger.debug("Got titles from site %s, now I ha    ve %d in total.", site['name'], len(titles))
+                self.logger.debug("Got titles from site %s, now I have %d in total.", site['name'], len(titles))
 
         # clean up before sending back
         return self.cleanupTitles(titles)

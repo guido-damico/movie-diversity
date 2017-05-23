@@ -9,7 +9,7 @@ import unittest
 import datetime
 import sources
 import movieLogger
-import tests.utils as utils
+import tests.utils
 
 class testSource(unittest.TestCase):
 
@@ -28,7 +28,7 @@ class testSource(unittest.TestCase):
 
         self.src = sources.Sources(dbfile = self._dbName)
 
-        self.util = utils.Utils(dbfile = self._dbName,
+        self.util = tests.utils.Utils(dbfile = self._dbName,
                                 logger = self.src.logger)
         self.util.checkDbDataTestNames()
 
