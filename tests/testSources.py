@@ -9,7 +9,7 @@ import unittest
 import datetime
 import sources
 import movieLogger
-import tests.utils
+import tests.testUtils
 
 class testSource(unittest.TestCase):
 
@@ -28,7 +28,7 @@ class testSource(unittest.TestCase):
 
         self.src = sources.Sources(dbfile = self._dbName)
 
-        self.util = tests.utils.Utils(dbfile = self._dbName,
+        self.util = tests.testUtils.Utils(dbfile = self._dbName,
                                 logger = self.src.logger)
         self.util.checkDbDataTestNames()
 
@@ -80,11 +80,11 @@ class testSource(unittest.TestCase):
     def testInsertTitle(self):
         testTitle = self.util.getNewTestName()
         id1 = self.src.insertTitle(title = testTitle,
-                                   locationId=1)
+                                   locationId = 1)
         self.assertTrue(isinstance(id1, type(1)), 'Id for titles should be returned as an integer (got: %s).' % id1)
        
         id2 = self.src.insertTitle(title = testTitle,
-                                   locationId=1)
+                                   locationId = 1)
         self.assertTrue(id1 == id2, 'Second insertion should return the original id (%s, got: %s).' %(id1, id2))
 
         try:
@@ -92,9 +92,12 @@ class testSource(unittest.TestCase):
             self.fail('Inserting a null title should throw an exception. Got record %d' % id1)
 
         except sqlite3.IntegrityError:
-            pass
+            self.src.logger.info("IntegrityError thrown by the db as expected for NULL title.")
+        except AttributeError:
+            self.src.logger.info("AttributeError thrown by the util as expected for NULL title.")
 
         try:
+            testTitle = self.util.getNewTestName()
             id1 = self.src.insertTitle(title = testTitle, locationId = None)
             self.fail('Inserting a null location should throw an exception. Got record %d' % id1)
 
@@ -102,6 +105,7 @@ class testSource(unittest.TestCase):
             pass
 
         try:
+            testTitle = self.util.getNewTestName()
             id1 = self.src.insertTitle(title = testTitle, locationId = -1)
             self.fail('Inserting an invalid location should throw an exception. Got record %d' % id1)
 

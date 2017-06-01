@@ -186,7 +186,7 @@ class Sources(object):
         Returns the title primary key.
         """
         newId = None
-        
+
         with (closing(self._conn.cursor())) as cur:
             # check whether the title is similar to one already in
             dbTitles = self.getAllDbTitles()

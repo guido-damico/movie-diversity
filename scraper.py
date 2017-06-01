@@ -82,8 +82,7 @@ class Scraper(object):
         self.logger.info("Querying %s ...", url)
 
         page = requests.get(url)
-        self.logger.debug("Returned status: %s.", page.status_code)
-        self.logger.debug("Got %d bytes back.", len(page.content))
+        self.logger.debug("Returned status: %s. Got %d bytes back.", page.status_code, len(page.content))
 
         tree = html.fromstring(page.content)
         titles = set(tree.xpath(title_xpath))
@@ -111,8 +110,12 @@ class Scraper(object):
         for ptr in range(0, len(titlesList)):
             for cmp in range(ptr + 1, len(titlesList)):
                 if utils.isSimilar(titlesList[ptr], titlesList[cmp]):
-                    similar.add(titlesList[cmp] + "|" + titlesList[ptr])
-        self.logger.debug("Similar titles omitted:\n%s", similar)
+                    self.logger.debug("Found title '%s', similar to '%s', using the latter.",titlesList[ptr],  titlesList[cmp])
+                    similar.add(titlesList[ptr])
+
+                    break
+
+        self.logger.debug("Similar titles omitted:\n%s", pformat(similar))
 
         # omit the similar ones from the output
         cleanedTitles = titles.difference(similar)

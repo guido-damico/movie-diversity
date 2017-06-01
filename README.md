@@ -59,7 +59,41 @@ The following python 3 packages must be installed and usable to have the applica
 There are few tests already in the `./tests` directory that you can run.
 A sample of the `testSources.py` run would be:
 ```
-_WIP_
+python3 tests/testSources.py -v
+2017-06-01 10:43:48 - INFO - Logger initialized at level 20.
+testInsertShow (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
+2017-06-01 10:43:48 - INFO - Verifying db schema tables...
+2017-06-01 10:43:48 - INFO - Verification terminated and passed.
+2017-06-01 10:43:48 - INFO - Found 4 test record(s).
+2017-06-01 10:43:48 - INFO - Cleaning up 4 test record(s).
+ok
+testInsertTitle (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
+2017-06-01 10:43:48 - INFO - Verifying db schema tables...
+2017-06-01 10:43:48 - INFO - Verification terminated and passed.
+2017-06-01 10:43:48 - INFO - AttributeError thrown by the util as expected for NULL title.
+2017-06-01 10:43:48 - INFO - Found 1 test record(s).
+2017-06-01 10:43:48 - INFO - Cleaning up 1 test record(s).
+ok
+testPlacesNames (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
+2017-06-01 10:43:48 - INFO - Verifying db schema tables...
+2017-06-01 10:43:48 - INFO - Verification terminated and passed.
+2017-06-01 10:43:48 - INFO - Found 0 test record(s).
+ok
+testPlacesType (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
+2017-06-01 10:43:48 - INFO - Verifying db schema tables...
+2017-06-01 10:43:48 - INFO - Verification terminated and passed.
+2017-06-01 10:43:48 - INFO - Found 0 test record(s).
+ok
+testSeedData (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
+2017-06-01 10:43:48 - INFO - Verifying db schema tables...
+2017-06-01 10:43:48 - INFO - Verification terminated and passed.
+2017-06-01 10:43:48 - INFO - Found 0 test record(s).
+ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.092s
+
+OK
 ```
 
 These are not yet a full regression suite...
