@@ -1,11 +1,15 @@
 #!/bin/bash
 
+
+ME=`basename ${0}`
 CURRENT_WORKSPACE=${1}
+echo "I am ${ME} from ${CURRENT_WORKSPACE}"
+
 CURRENT_PYTHONPATH=${CURRENT_WORKSPACE}
 
 cd "${CURRENT_WORKSPACE}"
 shift
 
-echo "Using: ${CURRENT_WORKSPACE}"
+echo "Running ${ME} Using: ${CURRENT_WORKSPACE}"
 
 PYTHONPATH="$CURRENT_PYTHONPATH" python3 tests/testSource.py $@ 
