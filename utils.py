@@ -11,7 +11,7 @@ similarityThreshold = 0.5
 def isSimilar(title1 = "", title2 = ""):
     """Given two strings, it returns True if their
     similarity ratio is closer than similarityThreshold.
-    
+
     The similarity ration is:
     (number of equal characters) / (length of the longest of the two titles)
     """

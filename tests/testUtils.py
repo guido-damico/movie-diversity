@@ -24,6 +24,7 @@ class Utils(object):
 
     def getDbTestRecords(self):
         output = {'titles': 0,
+                  'titles_in_locations': 0,
                   'shows': 0}
 
         with (closing(self._conn.cursor())) as cur:
@@ -31,9 +32,16 @@ class Utils(object):
             recs = cur.fetchall()
             output['titles'] = [x['id'] for x in recs]
 
-            placeholders = ', '.join('?' * len(output['titles']))
-            qry = "SELECT id FROM shows WHERE titles_ref in (%s);" % placeholders
+            placeholdersTId = ', '.join('?' * len(output['titles']))
+
+            qry = "SELECT id FROM titles_in_locations WHERE titles_ref in (%s);" % placeholdersTId
             cur.execute(qry, output['titles'])
+            recs = cur.fetchall()
+            output['titles_in_locations'] = [x['id'] for x in recs]
+            placeholdersTILId = ', '.join('?' * len(output['titles_in_locations']))
+
+            qry = "SELECT id FROM shows WHERE titles_in_locations_ref in (%s);" % placeholdersTILId
+            cur.execute(qry, output['titles_in_locations'])
             recs = cur.fetchall()
             output['shows'] = [x['id'] for x in recs]
 
@@ -49,17 +57,26 @@ class Utils(object):
     def cleanUpTestData(self):
         with (closing(self._conn.cursor())) as cur:
             testRecords = self.getDbTestRecords()
-            totLen = len(testRecords['titles']) + len(testRecords['shows'])
+            totLen = len(testRecords['titles']) + len(testRecords['titles_in_locations']) + len(testRecords['shows'])
 
-            self._logger.info("Found %d test record(s).", totLen)
+            self._logger.info("Found %d titles test record(s).", len(testRecords['titles']))
+            self._logger.info("Found %d titles_in_locations test record(s).", len(testRecords['titles_in_locations']))
+            self._logger.info("Found %d shows test record(s).", len(testRecords['shows']))
 
             if totLen > 0:
                 self._logger.info("Cleaning up %d test record(s).", totLen)
 
-                placeholders = ', '.join('?' * len(testRecords['titles']))
+                placeholdersTId = ', '.join('?' * len(testRecords['titles']))
+                placeholdersTILId = ', '.join('?' * len(testRecords['titles_in_locations']))
 
-                qry = "DELETE FROM shows WHERE titles_ref in (%s);" % placeholders
-                cur.execute(qry, testRecords['titles'])
+                qry = "DELETE FROM shows WHERE titles_in_locations_ref in (%s);" % placeholdersTILId
+                cur.execute(qry, testRecords['titles_in_locations'])
+                self._logger.info("Deleted %d shows test record(s).", cur.rowcount)
 
-                qry = "DELETE FROM titles WHERE id in (%s);" % placeholders
+                qry = "DELETE FROM titles_in_locations WHERE titles_ref in (%s);" % placeholdersTILId
+                cur.execute(qry, testRecords['titles_in_locations'])
+                self._logger.info("Deleted %d titles_in_locations test record(s).", cur.rowcount)
+
+                qry = "DELETE FROM titles WHERE id in (%s);" % placeholdersTId
                 cur.execute(qry, testRecords['titles'])
+                self._logger.info("Deleted %d titles test record(s).", cur.rowcount)

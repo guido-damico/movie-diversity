@@ -47,8 +47,8 @@ class Scraper(object):
 
         # stores each title
         for title in titles:
-            titleId = self._source.insertTitle(title, locationData[0]['locations_ref'])
-            self._source.insertShow(titleId)
+            titleId = self._source.insertTitleInLocation(title, locationData[0]['locations_ref'])[0]
+            self._source.insertShow(titleId, locationData[0]['locations_ref'])
             self.logger.debug("Inserted a title and a show for '%s' in %s (%d) today.",\
                               title, locationName, locationData[0]['locations_ref'])
 
