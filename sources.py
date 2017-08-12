@@ -5,13 +5,14 @@ Created on May 5, 2017
 
 Source module for the MovieDiversity app.
 '''
-import sqlite3
-import logging
 from pprint import pformat
+from contextlib import closing
+import logging
 import datetime
 import movieLogger
 import utils
-from contextlib import closing
+
+import dbUtils as db
 
 class Sources(object):
     """
@@ -28,7 +29,7 @@ class Sources(object):
 
     # sqlite db location
     _sqliteFileName = './movieDiversity.db'
-    
+
     # auto-commit?
     _isolationLevel = None
 
@@ -42,13 +43,10 @@ class Sources(object):
         """
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
 
-        self._conn = sqlite3.connect(dbfile, isolation_level = self._isolationLevel)
+        self._conn = db.connect(dbfile = dbfile)
 
         self.logger.info("Source connected to db in '%s'", dbfile)
 
-        # in order to get the records and the column names every time, we use
-        # the standard Row factory
-        self._conn.row_factory = sqlite3.Row
 
     def getAllLocations(self,
                         refresh = False):
@@ -57,11 +55,10 @@ class Sources(object):
         performs a new query to the db to get fresh data.
         """
         if refresh or len(self._locations) == 0:
-            with (closing(self._conn.cursor())) as cur:
-                cur.execute("PRAGMA foreign_keys = ON;")
-                cur.execute('SELECT name FROM locations;')
+            with (closing(db.cursor(self._conn))) as cur:
+                cur.execute('SELECT id, name FROM locations;')
                 self._locations = cur.fetchall()
-                self._locations = [x[0] for x in self._locations]
+                self._locations = [{'id': x['id'], 'name': x['name']} for x in self._locations]
 
         return self._locations
 
@@ -70,7 +67,7 @@ class Sources(object):
                         refresh = False):
         """Given a location name, it returns all the currently known data for that
         location, in the form of a list of dictionaries.
-        
+
         If "Refresh" is set to True, or if there is no data in the cache,
         performs a new query to the db to get fresh data.
 
@@ -81,24 +78,27 @@ class Sources(object):
         if refresh or len(self._data) == 0:
             self.logger.debug("Refreshing data for %s.", locationName)
 
-            with (closing(self._conn.cursor())) as cur:
-                cur.execute("PRAGMA foreign_keys = ON;")
+            with (closing(db.cursor(self._conn))) as cur:
                 cur.execute('SELECT s.id, s.name, url, title_xpath, active, locations_ref, l.name location_name ' + \
                             'FROM locations l, sites s ' + \
                             'WHERE  s.locations_ref = l.id;')
                 allData = cur.fetchall()
-    
+
                 for r in allData:
                     self._data.append({k: r[k] for k in r.keys()})
 
         return [x for x in self._data if x['location_name'] == locationName]
 
     def getAllDbTitles(self):
-        """Returns a list of dictionaries {'id':..., 'title':..., 'location_ref':...}
-        for all titles in the db.
+        """Returns a list of dictionaries for all titles in the db.
+
+        Valid keys:
+            tid : titles(id)
+            tilid : titles_in_locations(id)
+            title : titles(title)
+            locations_ref : locations(id)
         """
-        with (closing(self._conn.cursor())) as cur:
-            cur.execute("PRAGMA foreign_keys = ON;")
+        with (closing(db.cursor(self._conn))) as cur:
             cur.execute("""SELECT t.id tid,
                                   t.title title,
                                   l.id locations_ref,
@@ -126,14 +126,13 @@ class Sources(object):
         """
         newTitleId = None
         newTitleInLocationId = None
-        
+
         assert title != None and title != "", \
             "Attempted to insert a NULL title!"
         assert locationId != None and isinstance(locationId, int), \
             "Attempted to insert a title with an invalid location (%s)!" % locationId
 
-        with (closing(self._conn.cursor())) as cur:
-            cur.execute("PRAGMA foreign_keys = ON;")
+        with (closing(db.cursor(self._conn))) as cur:
             dbTitles = self.getAllDbTitles()
 
             # check whether the title is similar to one already in for this location
@@ -150,8 +149,7 @@ class Sources(object):
 
             elif len(similar) > 1:
                 # data inconsistency! Found many similar titles, can't proceed: log an error and discard this record
-                self.logger.error("Cannot insert title '%s', found too many similar ones already in the db:\n" + \
-                                   "%s" % pformat(similar))
+                self.logger.error("Cannot insert title '%s', found too many similar ones already in the db:\n%s", title, pformat(similar))
             else:
                 # this title is not in the given location: check all other locations
                 similar = [x for x in dbTitles if x['locations_ref'] != locationId \
@@ -168,7 +166,7 @@ class Sources(object):
                                 (similar[0]['tid'], locationId))
                     newTitleInLocationId = cur.lastrowid
                     newTitleId = similar[0]['tid']
-    
+
                 else:
                     # Bona fide new title: insert the title for this location
                     self.logger.debug("Brand new title '%s', adding it to titles and to location %d.", \
@@ -187,7 +185,7 @@ class Sources(object):
     def insertShow(self, titlesRef = None, locationsRef = None, date = None):
         """Inserts a new show for the given titles(id) on the specified date.
         If the same (titles_ref , date) tuple is already there, this is a no-op.
-        
+
         If date is None, then today's date is used.
         The format for the date string should be '%Y-%m-%d'.
 
@@ -199,17 +197,16 @@ class Sources(object):
         assert isinstance(locationsRef, int), "Cannot insert a show with a locationsRef of type %s, should be an int!" % (type(locationsRef))
 
         currDate = datetime.date.today().strftime('%Y-%m-%d')
-        
-        if date == None:
+
+        if date is None:
             date = currDate
 
-        with (closing(self._conn.cursor())) as cur:
-            cur.execute("PRAGMA foreign_keys = ON;")
+        with (closing(db.cursor(self._conn))) as cur:
             cur.execute("SELECT id FROM titles_in_locations WHERE titles_ref = ? and locations_ref = ?;", (titlesRef, locationsRef))
             tilId = cur.fetchone()
-            
+
             # if this title was not shown before in this location, add it to the titles_in_locations table
-            if tilId == None:
+            if tilId is None:
                 cur.execute("INSERT INTO titles_in_locations(titles_ref, locations_ref) VALUES (?, ?);", (titlesRef, locationsRef))
                 tilId = cur.lastrowid
             else:
@@ -228,4 +225,43 @@ class Sources(object):
                 newId = cur.lastrowid
 
             return newId
-        
+
+    def getAllTitlesInLocation(self, locationsId = None):
+        """
+        Given a locations Id, returns a list of dictionaries representing the titles.
+
+        Output structure:
+            [{'tid': title Id,
+              'tilid': titles_in_locaitons id,
+              'title': title string,
+              'first_show': date of the first show of this title in this location,
+              'last_show': date of the most recent show of this title in this location,
+              'locations_ref': id of the location}]
+        """
+        with (closing(db.cursor(self._conn))) as cur:
+            cur.execute("""SELECT t.id tid,
+                                  t.title title,
+                                  til.id tilid,
+                                  min(s.date) first_show,
+                                  max(s.date) last_Show
+                           FROM titles t,
+                                locations l,
+                                titles_in_locations til,
+                                shows s
+                           WHERE t.id = til.titles_ref
+                           AND s.titles_in_locations_ref = til.id
+                           AND til.locations_ref = ?
+                           GROUP BY t.id, t.title, til.id
+                           ORDER BY t.title;
+                        """, (locationsId,))
+
+            rows = cur.fetchall()
+            output = [{'tid': r['tid'], \
+                       'tilid': r['tilid'], \
+                       'title': r['title'], \
+                       'first_show': r['first_show'], \
+                       'last_show': r['last_show'], \
+                       'locations_ref': r['locations_ref']} \
+                      for r in rows]
+
+        return output

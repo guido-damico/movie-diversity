@@ -35,25 +35,38 @@ class Scraper(object):
 
     def updateLocationMovies(self, locationName = None):
         """Given a location name, fetches the data off the net and
-        populates the db. 
+        populates the db.
         """
-        titles = set()
 
         # Gets the movie titles
         locationData = self._source.getLocationData(locationName = locationName)
         assert isinstance(locationData, type([])), \
-               "Expected a list for locations, instead got %s" % type(locationData)
+                          "Expected a list for locations, instead got %s" % type(locationData)
         titles = self.getMoviesTitles(locationName = locationName)
 
+        successfullyInserted = 0
         # stores each title
         for title in titles:
             titleId = self._source.insertTitleInLocation(title, locationData[0]['locations_ref'])[0]
-            self._source.insertShow(titleId, locationData[0]['locations_ref'])
-            self.logger.debug("Inserted a title and a show for '%s' in %s (%d) today.",\
-                              title, locationName, locationData[0]['locations_ref'])
+            if titleId is None:
+                self.logger.error("Could not identify '%s' correctly, skipping it.", title)
+            else:
+                self._source.insertShow(titleId, locationData[0]['locations_ref'])
+                successfullyInserted += 1
+                self.logger.debug("Inserted show %d for '%s' in %s (%d) today.",
+                                  successfullyInserted,
+                                  title,
+                                  locationName,
+                                  locationData[0]['locations_ref'])
 
         # logs some information
-        self.logger.info("Inserted %d new shows for today in %s.", len(titles), locationName)
+        self.logger.info("Inserted %d new shows for today in %s.",
+                         len(titles),
+                         locationName)
+        if successfullyInserted != len(titles):
+            self.logger.warning("Skipped %d shows for %s",
+                                len(titles) - successfullyInserted,
+                                locationName)
 
     def getMoviesTitles(self, locationName = None):
         """Given the id of a location, it returns a
@@ -69,8 +82,10 @@ class Scraper(object):
         for site in data:
             if site['active']:
                 titles = titles.union(self.getMoviesTitlesFromData(url = site['url'],
-                                                          title_xpath = site['title_xpath']))
-                self.logger.debug("Got titles from site %s, now I have %d in total.", site['name'], len(titles))
+                                                                   title_xpath = site['title_xpath']))
+                self.logger.debug("Got titles from site %s, now I have %d in total.",
+                                  site['name'],
+                                  len(titles))
 
         # clean up before sending back
         return self.cleanupTitles(titles)
@@ -82,7 +97,9 @@ class Scraper(object):
         self.logger.info("Querying %s ...", url)
 
         page = requests.get(url)
-        self.logger.debug("Returned status: %s. Got %d bytes back.", page.status_code, len(page.content))
+        self.logger.debug("Returned status: %s. Got %d bytes back.",
+                          page.status_code,
+                          len(page.content))
 
         tree = html.fromstring(page.content)
         titles = set(tree.xpath(title_xpath))
@@ -107,11 +124,14 @@ class Scraper(object):
         # set of movies discarded as similar to other ones, captured here for debugging purposes
         similar = set()
 
-        for ptr in range(0, len(titlesList)):
-            for cmp in range(ptr + 1, len(titlesList)):
-                if utils.isSimilar(titlesList[ptr], titlesList[cmp]):
-                    self.logger.debug("Found title '%s', similar to '%s', using the latter.",titlesList[ptr],  titlesList[cmp])
-                    similar.add(titlesList[ptr])
+        # check if the title is a duplicate of a similar one, if so skip it
+        for first in range(0, len(titlesList)):
+            for second in range(first + 1, len(titlesList)):
+                if utils.isSimilar(titlesList[first], titlesList[second]):
+                    self.logger.debug("Found title '%s', similar to '%s', using the latter.",
+                                      titlesList[first],
+                                      titlesList[second])
+                    similar.add(titlesList[first])
 
                     break
 
@@ -152,6 +172,6 @@ if __name__ == "__main__":
     S.logger.info("Locations definitions found for: %s", allLocations)
 
     S.logger.info("Looking for: %s...", args.location)
-    t = S.updateLocationMovies(args.location)
+    S.updateLocationMovies(args.location)
     S.logger.info("End run.")
 

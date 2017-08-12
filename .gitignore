@@ -5,5 +5,7 @@
 pylint
 scraper.pyc
 /tests/__pycache__
-
+*.log
+*.swp
+*.bak
 

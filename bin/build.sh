@@ -12,4 +12,4 @@ shift
 
 echo "Running ${ME} Using: ${CURRENT_WORKSPACE}"
 
-PYTHONPATH="$CURRENT_PYTHONPATH" python3 tests/testSource.py $@ 
+PYTHONPATH="$CURRENT_PYTHONPATH" python3 tests/testSources.py $@ 

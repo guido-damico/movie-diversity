@@ -7,12 +7,17 @@ import sys
 import sqlite3
 import unittest
 import datetime
+from contextlib import closing
+import xmlrunner
+import dbUtils as db
 import sources
 import movieLogger
-from contextlib import closing
 import tests.testUtils
 
 class testSource(unittest.TestCase):
+    """
+    Tests for the sources class.
+    """
 
     src = None
     util = None
@@ -67,7 +72,7 @@ class testSource(unittest.TestCase):
         self.src = sources.Sources(dbfile = self._dbName)
 
         self.util = tests.testUtils.Utils(dbfile = self._dbName,
-                                          logger = self.src.logger)        
+                                          logger = self.src.logger)
 
         self.util.checkDbDataTestNames()
 
@@ -78,17 +83,16 @@ class testSource(unittest.TestCase):
     def testSchema(self, allTables = None):
         """Verifies that the definitions of the db schema conforms to the expectations.
         """
-        
+
         self.src.logger.info("Verifying db schema tables...")
 
-        with (closing(self.src._conn.cursor())) as cur:
-            cur.execute("PRAGMA foreign_keys = ON;")
+        with (closing(db.cursor(self.src._conn))) as cur:
             cur.execute("SELECT lower(sql) sql FROM sqlite_master;")
             allTables = cur.fetchall()
-    
+
             assert len(allTables) == 6, \
                 "%s file should have 5 tables defined (found %d)." % (self._dbName, len(allTables))
-    
+
             assert isinstance(allTables, type([])), \
                 "Expected a list of sqlite3.Row, got instead %s" % (type(allTables))
             assert len(allTables) > 0, \
@@ -96,13 +100,13 @@ class testSource(unittest.TestCase):
             assert isinstance(allTables[0], sqlite3.Row), \
                 "Expected elements of sqlite3.Row, got instead %s" % (type(allTables[0]))
             tablesNames = self._schemaData.keys()
-    
+
             # we look in all the tables defined in the schemaData dictionary
             # to find the expected elements. This guarantees the minimum data
             # needed to work correctly.
             for tName in tablesNames:
                 stmt = [x[0] for x in allTables if "create table " + tName + " (" in x[0]]
-    
+
                 self.src.logger.debug("Verifying definition for table %s", tName)
                 assert len(stmt) == 1 and ("create table %s" % tName) in stmt[0], \
                     "Table %s not found in schema." % tName
@@ -116,14 +120,27 @@ class testSource(unittest.TestCase):
 
 
     def testPlacesType(self):
+        """
+        Tests the places metadata.
+        """
         places = self.src.getAllLocations(refresh = True)
 
-        self.assertTrue(isinstance(places, type([])) and
-                        places != [],
-                        "getAllPlaces() should return a list of strings.")
+        self.assertTrue(isinstance(places, list) and \
+                        places != [], \
+                        "getAllPlaces() should return a list.")
+
+        self.assertTrue(isinstance(places[0], dict) and \
+                        places != [], \
+                        "getAllPlaces() should return a list of dictionaries.")
+
+        self.assertTrue(sorted(list(places[0].keys())) ==  sorted(['id', 'name']),
+                        "getAllPlaces() should return a list of dictionaries whose keys are 'id' and 'name'.")
 
     def testPlacesNames(self):
-        places = self.src.getAllLocations(refresh = True)
+        """
+        Tests the places names data.
+        """
+        places = [x['name'] for x in self.src.getAllLocations(refresh = True)]
 
         self.assertIn("Milano", places, "Milano should be included in the places list.")
         self.assertIn("San Francisco", places, "San Francisco should be included in the places list.")
@@ -132,10 +149,13 @@ class testSource(unittest.TestCase):
         self.assertIn("München", places, "München should be included in the places list.")
 
     def testSeedData(self):
+        """
+        Tests the seed data for all places.
+        """
         places = self.src.getAllLocations(refresh = True)
 
         for town in places:
-            placeData = self.src.getLocationData(town, refresh = True)
+            placeData = self.src.getLocationData(town['name'], refresh = True)
 
             self.assertTrue(isinstance(placeData, type([])),
                             "data for %s should be a list (was %s)" % (town, type(placeData)))
@@ -160,11 +180,14 @@ class testSource(unittest.TestCase):
                                 "title_xpath value for %s should not be a an empty string" % (town))
 
     def testInsertTitleInLocation(self):
+        """
+        Tests inserting a test title in a location.
+        """
         testTitle = self.util.getNewTestName()
         (tid1, tilid1) = self.src.insertTitleInLocation(title = testTitle,
                                                         locationId = 1)
         self.assertTrue(isinstance(tid1, int), 'Id for titles should be returned as an integer (got: %s).' % tid1)
-       
+
         (tid2, tilid2) = self.src.insertTitleInLocation(title = testTitle,
                                                         locationId = 1)
         self.assertTrue(tid1 == tid2, 'Second insertion should return the original id (%s, got: %s).' %(tid1, tid2))
@@ -195,6 +218,9 @@ class testSource(unittest.TestCase):
             pass
 
     def testInsertShow(self):
+        """
+        Tests inserting a show with a test title in a location.
+        """
         testTitle = self.util.getNewTestName()
         testTitleId = self.src.insertTitleInLocation(title = testTitle, locationId = 1)[0]
 
@@ -240,7 +266,7 @@ class testSource(unittest.TestCase):
             if str(ae) == "Cannot insert a show with a null titlesRef!":
                 pass
             else:
-                self.src.logger.error("Got the following error message: '%s'" % ae)
+                self.src.logger.error("Got the following error message: '%s'", ae)
                 raise
 
         try:
@@ -251,7 +277,7 @@ class testSource(unittest.TestCase):
             if str(ae) == "Cannot insert a show with a null titlesRef!":
                 pass
             else:
-                self.src.logger.error("Got the following error message: '%s'" % ae)
+                self.src.logger.error("Got the following error message: '%s'", ae)
                 raise
 
         try:
@@ -262,7 +288,7 @@ class testSource(unittest.TestCase):
             if str(ie) == "FOREIGN KEY constraint failed":
                 pass
             else:
-                self.src.logger.error("Got the following error message: '%s'" % ae)
+                self.src.logger.error("Got the following error message: '%s'", ae)
                 raise
 
         try:
@@ -273,7 +299,7 @@ class testSource(unittest.TestCase):
             if str(ae) == "Cannot insert a show with a null locationsRef!":
                 pass
             else:
-                self.src.logger.error("Got the following error message: '%s'" % ae)
+                self.src.logger.error("Got the following error message: '%s'", ae)
                 raise
 
         try:
@@ -284,7 +310,7 @@ class testSource(unittest.TestCase):
             if str(ie) == "FOREIGN KEY constraint failed":
                 pass
             else:
-                self.src.logger.error("Got the following error message: '%s'" % ae)
+                self.src.logger.error("Got the following error message: '%s'", ae)
                 raise
 
 if __name__ == "__main__":
@@ -292,7 +318,6 @@ if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] != "exportXML":
         unittest.main()
     else:
-        import xmlrunner
         del sys.argv[1] # remove the exportXML flag, which is not to be passed to the runner
         unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'))
 
