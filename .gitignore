@@ -8,4 +8,4 @@ scraper.pyc
 *.log
 *.swp
 *.bak
-
+/backup
