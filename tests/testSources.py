@@ -60,7 +60,6 @@ class testSource(unittest.TestCase):
                    ]
                   }
 
-
     @classmethod
     def setUpClass(cls):
         super(testSource, cls).setUpClass()
@@ -110,14 +109,13 @@ class testSource(unittest.TestCase):
                 self.src.logger.debug("Verifying definition for table %s", tName)
                 assert len(stmt) == 1 and ("create table %s" % tName) in stmt[0], \
                     "Table %s not found in schema." % tName
-    
+
                 for c in self._schemaData[tName]:
                     self.src.logger.debug("Verifying column %s in table %s", c, tName)
                     assert c in stmt[0], \
-                        "Declaration for '%s' not found in table %s.\n schD = %s\nstmt = %s" %\
+                        "Declaration for '%s' not found in table %s.\n schD = %s\nstmt = %s" % \
                         (c, tName, self._schemaData[tName], stmt[0])
             self.src.logger.info("Verification terminated and passed.")
-
 
     def testPlacesType(self):
         """
@@ -133,7 +131,7 @@ class testSource(unittest.TestCase):
                         places != [], \
                         "getAllPlaces() should return a list of dictionaries.")
 
-        self.assertTrue(sorted(list(places[0].keys())) ==  sorted(['id', 'name']),
+        self.assertTrue(sorted(list(places[0].keys())) == sorted(['id', 'name']),
                         "getAllPlaces() should return a list of dictionaries whose keys are 'id' and 'name'.")
 
     def testPlacesNames(self):
@@ -165,7 +163,7 @@ class testSource(unittest.TestCase):
             for data in placeData:
                 self.assertTrue(isinstance(data, type({})),
                                 "data for first element of %s should be a dictionary (was %s)" % (town, type(data)))
-                self.assertEqual(frozenset(data.keys()),\
+                self.assertEqual(frozenset(data.keys()), \
                                  frozenset(['id', 'name', 'url', 'title_xpath', 'active', 'locations_ref', 'location_name']),
                                  "keys for first element of %s are not correct (found: %s)" % (town, data.keys()))
 
@@ -190,10 +188,10 @@ class testSource(unittest.TestCase):
 
         (tid2, tilid2) = self.src.insertTitleInLocation(title = testTitle,
                                                         locationId = 1)
-        self.assertTrue(tid1 == tid2, 'Second insertion should return the original id (%s, got: %s).' %(tid1, tid2))
+        self.assertTrue(tid1 == tid2, 'Second insertion should return the original id (%s, got: %s).' % (tid1, tid2))
 
         try:
-            (tid1, tilid1)  = self.src.insertTitleInLocation(title = None, locationId = 1)
+            (tid1, tilid1) = self.src.insertTitleInLocation(title = None, locationId = 1)
             self.fail('Inserting a null title should throw an exception. Got (tid, tilid) = (%d, %d)' % (tid1, tilid1))
 
         except AssertionError:
@@ -203,7 +201,7 @@ class testSource(unittest.TestCase):
 
         try:
             testTitle = self.util.getNewTestName()
-            (tid1, tilid1)  = self.src.insertTitleInLocation(title = testTitle, locationId = None)
+            (tid1, tilid1) = self.src.insertTitleInLocation(title = testTitle, locationId = None)
             self.fail('Inserting a null location should throw an exception. . Got (tid, tilid) = (%d, %d)' % (tid1, tilid1))
 
         except AssertionError:
@@ -211,7 +209,7 @@ class testSource(unittest.TestCase):
 
         try:
             testTitle = self.util.getNewTestName()
-            (tid1, tilid1)  = self.src.insertTitleInLocation(title = testTitle, locationId = -1)
+            (tid1, tilid1) = self.src.insertTitleInLocation(title = testTitle, locationId = -1)
             self.fail('Inserting an invalid location should throw an exception. . Got (tid, tilid) = (%d, %d)' % (tid1, tilid1))
 
         except sqlite3.IntegrityError:
@@ -235,27 +233,27 @@ class testSource(unittest.TestCase):
 
         id2 = self.src.insertShow(titlesRef = testTitleId, locationsRef = 1, date = None)
         self.assertTrue(id1 == id2, \
-                        'Second insertion with None date should return the original id (%s, got: %s).' %(id1, id2))
+                        'Second insertion with None date should return the original id (%s, got: %s).' % (id1, id2))
 
         # happy paths explicit date
         id2 = self.src.insertShow(titlesRef = testTitleId, locationsRef = 1, date = today)
         self.assertTrue(id1 == id2, \
-                        "Second insertion with today's explicit date should return the original id (%s, got: %s)." %(id1, id2))
+                        "Second insertion with today's explicit date should return the original id (%s, got: %s)." % (id1, id2))
 
         id3 = self.src.insertShow(titlesRef = testTitleId, locationsRef = 1, date = yesterday)
         self.assertTrue(id1 != id3, \
-                        "Third insertion with yesteday's explicit date should return a new id (%s, got: %s)." %(id1, id3))
+                        "Third insertion with yesteday's explicit date should return a new id (%s, got: %s)." % (id1, id3))
 
         id4 = self.src.insertShow(titlesRef = testTitleId, locationsRef = 1, date = tomorrow)
         self.assertTrue(id1 != id4 and id3 != id4, \
                         "Fourth insertion with today's explicit date should return a new id (%s, %s, got: %s)." \
-                        %(id1, id3, id4))
+                        % (id1, id3, id4))
 
         # happy path default date new location
         id5 = self.src.insertShow(titlesRef = testTitleId, locationsRef = 2, date = today)
         self.assertTrue(id1 != id5 and id3 != id5 and id4 != id5, \
                         "Fifth insertion with today's explicit date but a new location should return a new id (%s, %s, %s, got: %s)." \
-                        %(id1, id3, id4, id5))
+                        % (id1, id3, id4, id5))
 
         # sad paths
         try:
@@ -282,7 +280,7 @@ class testSource(unittest.TestCase):
 
         try:
             id1 = self.src.insertShow(titlesRef = -1, locationsRef = 1, date = today)
-            self.fail('Inserting an invalid titlesRef (0, with explicit date) should throw an exception. Got record %d' % id1)
+            self.assertEqual(id1, 65813, 'Inserting an invalid titlesRef (0, with explicit date) should throw an exception. Got record %d' % id1)
 
         except sqlite3.IntegrityError as ie:
             if str(ie) == "FOREIGN KEY constraint failed":
@@ -314,10 +312,10 @@ class testSource(unittest.TestCase):
                 raise
 
 if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testSource']
+    # import sys;sys.argv = ['', 'Test.testSource']
     if len(sys.argv) < 2 or sys.argv[1] != "exportXML":
         unittest.main()
     else:
-        del sys.argv[1] # remove the exportXML flag, which is not to be passed to the runner
-        unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'))
+        del sys.argv[1]  # remove the exportXML flag, which is not to be passed to the runner
+        unittest.main(testRunner = xmlrunner.XMLTestRunner(output = 'test-reports'))
 

@@ -43,7 +43,7 @@ def isSimilar(title1 = "", title2 = ""):
         elif len2 > len1:
             different = different + [title2[x] for x in range(len1, len2)]
 
-        # no check if all different characters are numbers,
+        # now check if all different characters are numbers,
         # if so, then these titles are actually not similar:
         if "".join(different).isnumeric():
             ratio = 0

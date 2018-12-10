@@ -60,11 +60,11 @@ class Utils(object):
         """
         Raises an exception if it finds that the db is not clean.
         To clean it up call cleanUpTestData().
-        Ro see which record are triggering the exception run getDbTestRecords().
+        To see which record are triggering the exception run getDbTestRecords().
         """
         alreadyThere = self.getDbTestRecords()
         if len(alreadyThere['titles']) + len(alreadyThere['shows']) > 0:
-            raise RuntimeError("Name conflict: found already %d records.\n" %\
+            raise RuntimeError("Name conflict: found already %d records.\n" % \
                                (len(alreadyThere['titles']) + len(alreadyThere['shows'])) + \
                                "Please clean up the testing db first.")
 

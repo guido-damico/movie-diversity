@@ -42,7 +42,7 @@ class Scraper(object):
         locationData = self._source.getLocationData(locationName = locationName)
         assert isinstance(locationData, type([])), \
                           "Expected a list for locations, instead got %s" % type(locationData)
-        titles = self.getMoviesTitles(locationName = locationName)
+        titles = self.getMoviesTitlesInLocation(locationName = locationName)
 
         successfullyInserted = 0
         # stores each title
@@ -68,7 +68,7 @@ class Scraper(object):
                                 len(titles) - successfullyInserted,
                                 locationName)
 
-    def getMoviesTitles(self, locationName = None):
+    def getMoviesTitlesInLocation(self, locationName = None):
         """Given the id of a location, it returns a
         set of all movie titles playing there today.
         """
@@ -81,7 +81,7 @@ class Scraper(object):
         # for every active site in the list, get the titles and insert them in the output set
         for site in data:
             if site['active']:
-                titles = titles.union(self.getMoviesTitlesFromData(url = site['url'],
+                titles = titles.union(self.getMoviesTitlesFromURL(url = site['url'],
                                                                    title_xpath = site['title_xpath']))
                 self.logger.debug("Got titles from site %s, now I have %d in total.",
                                   site['name'],
@@ -90,7 +90,7 @@ class Scraper(object):
         # clean up before sending back
         return self.cleanupTitles(titles)
 
-    def getMoviesTitlesFromData(self, url = "", title_xpath = ""):
+    def getMoviesTitlesFromURL(self, url = "", title_xpath = ""):
         """Function which given a URL and an xpath query to identify the titles of the movies on the
         page returned by the URL, it returns a set of all the titles.
         """

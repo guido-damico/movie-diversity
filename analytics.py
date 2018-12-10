@@ -4,8 +4,11 @@ Created on Jun 5, 2017
 @author: Guido
 '''
 import argparse
+from sqlalchemy import create_engine
+
 import sources
 import movieLogger
+from movieDbClasses import Base, Titles, Locations, TitlesInLocations
 
 def formatReport():
     """Outputs the requested report.
@@ -39,12 +42,27 @@ if __name__ == "__main__":
     # Init the logging system
     movieLogger.MovieLoggger().initLogger(level = args.logLevel)
 
+    engine = create_engine("sqlite:///" + args.dbfile)
+    Base.metadata.bind = engine
+    from sqlalchemy.orm import sessionmaker
+    DBSession = sessionmaker()
+    DBSession.bind = engine
+    session = DBSession()
+
+    # Make a query to find all Locations in the database
+    session.query(Locations).all()
+
+    # Return the first Person from all Persons in the database
+    person = session.query(Locations).first()
+    
+
+###
     S = sources.Sources(dbfile = args.dbfile)
 
     S.logger.info("Analytics module")
 
     allLocations = S.getAllLocations()
-    S.logger.info("Locations definitions found for: %s", allLocations)
+    S.logger.info("Locations definitions found for: %s", [x['name'] for x in allLocations])
 
     S.logger.info("Looking for: %s...", args.location)
 
