@@ -12,7 +12,7 @@ import requests
 from lxml import html
 import sources
 import movieLogger
-import utils
+from utils import stringUtils
 
 class Scraper(object):
     """
@@ -127,7 +127,7 @@ class Scraper(object):
         # check if the title is a duplicate of a similar one, if so skip it
         for first in range(0, len(titlesList)):
             for second in range(first + 1, len(titlesList)):
-                if utils.isSimilar(titlesList[first], titlesList[second]):
+                if stringUtils.isSimilar(titlesList[first], titlesList[second]):
                     self.logger.debug("Found title '%s', similar to '%s', using the latter.",
                                       titlesList[first],
                                       titlesList[second])

@@ -9,7 +9,7 @@ import unittest
 import datetime
 from contextlib import closing
 import xmlrunner
-import dbUtils as db
+from utils import dbUtils as db
 import sources
 import movieLogger
 import tests.testUtils

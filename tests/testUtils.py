@@ -4,7 +4,7 @@ Created on May 21, 2017
 @author: Guido
 '''
 from contextlib import closing
-import dbUtils as db
+from utils import dbUtils as db
 
 class Utils(object):
     """

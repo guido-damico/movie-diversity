@@ -54,6 +54,7 @@ The following python 3 packages must be installed and usable to have the applica
 - pprint
 - datetime
 - contextlib
+- sqlalchemy
 
 # Tests
 There are few tests already in the `./tests` directory that you can run.

@@ -10,9 +10,9 @@ from contextlib import closing
 import logging
 import datetime
 import movieLogger
-import utils
+from utils import stringUtils
 
-import dbUtils as db
+from utils import dbUtils as db
 
 class Sources(object):
     """
@@ -137,7 +137,7 @@ class Sources(object):
 
             # check whether the title is similar to one already in for this location
             similar = [x for x in dbTitles if x['locations_ref'] == locationId \
-                                           and (utils.isSimilar(title, x['title']))
+                                           and (stringUtils.isSimilar(title, x['title']))
                       ]
 
             if len(similar) == 1:
@@ -153,7 +153,7 @@ class Sources(object):
             else:
                 # this title is not in the given location: check all other locations
                 similar = [x for x in dbTitles if x['locations_ref'] != locationId \
-                                           and (utils.isSimilar(title, x['title']))
+                                           and (stringUtils.isSimilar(title, x['title']))
                           ]
 
                 if len(similar) >= 1:

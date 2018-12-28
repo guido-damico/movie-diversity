@@ -9,13 +9,12 @@ import unittest
 import xmlrunner
 import movieLogger
 import logging
-import movieDbClasses
 import tests.testUtils
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-from movieDbClasses import Locations
-from movieDbClasses import movieDbBaseClass
+
+import movieDbClasses
 from movieDbClasses import Locations
 from movieDbClasses import Sites
 from movieDbClasses import Titles
@@ -32,7 +31,7 @@ class testMovieDbClasses(unittest.TestCase):
     session = None
     util = None
 
-    _dbName = '/home/guido/work/git/movie-diversity/m.db'
+    _dbName = '/home/guido/work/git/movie-diversity/movieDiversity.db'
     _dbConnectString = 'sqlite:///' + _dbName
 
     _expectedClasses = [
@@ -104,9 +103,7 @@ class testMovieDbClasses(unittest.TestCase):
         self.util.checkDbDataTestNames()
 
     def tearDown(self):
-        self.util.cleanUpTestData()
         unittest.TestCase.tearDown(self)
-        None
 
     def testDbClasses(self):
         """

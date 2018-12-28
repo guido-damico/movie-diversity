@@ -49,3 +49,23 @@ def isSimilar(title1 = "", title2 = ""):
             ratio = 0
 
     return ratio > similarityThreshold
+
+def isAnInt(inputString = None):
+    """
+    Returns true if the string in input represents an integer.
+    """
+
+    if isinstance(inputString, int):
+        return True
+
+    else:
+        try:
+            inputFloat = float(inputString)
+
+            if inputFloat.is_integer():
+                return True
+            else:
+                return False
+
+        except ValueError:
+            return False
