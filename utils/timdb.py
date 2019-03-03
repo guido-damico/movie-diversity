@@ -1,4 +1,6 @@
 """
+Client to query the movie db (TIMDB: https://developers.themoviedb.org/3/getting-started).
+
 Created on Dec 15, 2018
 
 @author: guido
@@ -55,4 +57,16 @@ class imdbRestClient(object):
         if not stringUtils.isAnInt(id):
             raise restClientError("Invalid Id, need an integer, got %s" % id)
 
-        return self.get(self._IMDB_API_URL + "movie/" + str(id) + "?" + self._API_KEY_ARG)
+        return self.get(self._IMDB_API_URL + "movie/%s?%s" % (str(id), self._API_KEY_ARG))
+
+    def searchByTitle(self, title = None):
+        """
+        Search the db for a movie by that title, works for any language,
+        results are sent back for the English version.
+        """
+        moviesFound = self.get(self._IMDB_API_URL + "search/movie?%s&query=%s&page=1&include_adult=true" % (self._API_KEY_ARG, title))
+
+        self.logger.debug("Querying for '%s' returned %d results." % (title, len(moviesFound)))
+
+        return moviesFound
+

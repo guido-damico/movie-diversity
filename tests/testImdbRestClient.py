@@ -19,9 +19,14 @@ class testMovieDbClasses(unittest.TestCase):
     logger = None
     imdbClient = None
 
-    _FULL_TEST_URL = "https://api.themoviedb.org/3/movie/144?api_key=09ac37f03df193fc3b81b7f4c097e8e2&language=en-US"
+    _IMDB_API_KEY = "09ac37f03df193fc3b81b7f4c097e8e2"
+    _FULL_TEST_URL = "https://api.themoviedb.org/3/movie/144?api_key=" + _IMDB_API_KEY + "&language=en-US"
     _MOVIE_ID = 144
     _MOVIE_TITLE = "Wings of Desire"
+    _SEARCH_STRIING_1 = "Il cielo sopra Berlino"
+    _SEARCH_STRIING_2 = "rosso"
+    _SEARCH_STRIING_2_TITLE = "Deep Red"
+    _SEARCH_STRIING_2_ORIGINAL_TITLE = "Profondo rosso"
 
     @classmethod
     def setUpClass(cls):
@@ -48,8 +53,28 @@ class testMovieDbClasses(unittest.TestCase):
         assert resp['title'] == self._MOVIE_TITLE, \
             "Expected title for movie %d to be '%s', got: %s" % (self._MOVIE_ID, self._MOVIE_TITLE, resp['title'])
 
+    def testSearchByTitle(self):
+        self.logger.info("Searching movies by keyword : %s" % self._SEARCH_STRIING_1)
+        resp = self.imdbClient.searchByTitle(self._SEARCH_STRIING_1)
+        assert len(resp['results']) == 1, \
+            "Expected 1 result, got %d" % len(resp['results'])
+        assert resp['results'][0]['title'] == self._MOVIE_TITLE, \
+            "Expected title '%s', got '%s'" % (self._MOVIE_TITLE, resp['results'][0]['title'])
+
+        self.logger.info("Searching movies by keyword : %s" % self._SEARCH_STRIING_2)
+        resp = self.imdbClient.searchByTitle(self._SEARCH_STRIING_2)
+        assert len(resp['results']) == 20, \
+            "Expected 20 results, got %d" % len(resp['results'])
+        assert resp['total_results'] == 126, \
+            "Expected 126 total_results, got %d" % resp['total_results']
+        assert resp['total_pages'] == 7, \
+            "Expected 7 pages of results, got %d" % resp['total_pages']
+        assert resp['results'][0]['title'] == self._SEARCH_STRIING_2_TITLE, \
+            "Expected title '%s', got '%s'" % (self._SEARCH_STRIING_2_TITLE, resp['results'][0]['title'])
+        assert resp['results'][0]['original_title'] == self._SEARCH_STRIING_2_ORIGINAL_TITLE, \
+            "Expected original title '%s', got '%s'" % (self._SEARCH_STRIING_2_ORIGINAL_TITLE, resp['results'][0]['original_title'])
+
 if __name__ == "__main__":
-    # import sys;sys.argv = ['', 'Test.testSource']
     if len(sys.argv) < 2 or sys.argv[1] != "exportXML":
         unittest.main()
     else:

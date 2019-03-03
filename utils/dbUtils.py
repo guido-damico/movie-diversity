@@ -9,7 +9,8 @@ Utilities to uniform the SQLite db handling.
 import sqlite3
 
 def connect(dbfile = None):
-    """Returns a connection to the specified sqlite db.
+    """
+    Returns a connection to the specified sqlite db.
     """
 
     assert dbfile != None, "Cannot build a connection to a NULL file, please specify a valid name."
@@ -21,7 +22,8 @@ def connect(dbfile = None):
     return out
 
 def cursor(connection = None):
-    """Returns a valid open cursor.
+    """
+    Returns a valid open cursor.
     """
 
     assert connection != None, "Cannot build a cursor on a NULL connection."

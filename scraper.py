@@ -1,10 +1,10 @@
-'''
+"""
 Created on May 5, 2017
 
 @author: Guido
 
 Main module to perform the MovieDiversity data collection app.
-'''
+"""
 import logging
 import argparse
 from pprint import pformat
@@ -25,7 +25,8 @@ class Scraper(object):
     logger = None
 
     def __init__(self, dbfile = None):
-        """Builds a local instance of the Sources class and
+        """
+        Builds a local instance of the Sources class and
         one of the MovieLogger engine.
         """
         self._source = sources.Sources(dbfile = dbfile)
@@ -34,7 +35,8 @@ class Scraper(object):
         self.logger.info("Scraper instance inited.")
 
     def updateLocationMovies(self, locationName = None):
-        """Given a location name, fetches the data off the net and
+        """
+        Given a location name, fetches the data off the net and
         populates the db.
         """
 
@@ -69,7 +71,8 @@ class Scraper(object):
                                 locationName)
 
     def getMoviesTitlesInLocation(self, locationName = None):
-        """Given the id of a location, it returns a
+        """
+        Given the id of a location, it returns a
         set of all movie titles playing there today.
         """
         self.logger.info("Looking for movie titles in %s.", locationName)
@@ -82,7 +85,7 @@ class Scraper(object):
         for site in data:
             if site['active']:
                 titles = titles.union(self.getMoviesTitlesFromURL(url = site['url'],
-                                                                   title_xpath = site['title_xpath']))
+                                                                  title_xpath = site['title_xpath']))
                 self.logger.debug("Got titles from site %s, now I have %d in total.",
                                   site['name'],
                                   len(titles))
@@ -91,7 +94,8 @@ class Scraper(object):
         return self.cleanupTitles(titles)
 
     def getMoviesTitlesFromURL(self, url = "", title_xpath = ""):
-        """Function which given a URL and an xpath query to identify the titles of the movies on the
+        """
+        Function which given a URL and an xpath query to identify the titles of the movies on the
         page returned by the URL, it returns a set of all the titles.
         """
         self.logger.info("Querying %s ...", url)
@@ -108,7 +112,8 @@ class Scraper(object):
         return titles
 
     def cleanupTitles(self, titles = None):
-        """Given a set of strings, it de-duplicates the ones
+        """
+        Given a set of strings, it de-duplicates the ones
         which are similar enough.
 
         For instance "Star Wars: a new hope" and "Star Wars - A New Hope"
@@ -142,11 +147,11 @@ class Scraper(object):
 
         return cleanedTitles
 
-###
+# ##
 #
 # main entry point
 #
-###
+# ##
 if __name__ == "__main__":
     # Parse arguments from command line
     parser = argparse.ArgumentParser(description = 'Scraper is a python app to monitor the movie offering.')
