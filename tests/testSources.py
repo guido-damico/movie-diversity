@@ -12,7 +12,7 @@ import xmlrunner
 from utils import dbUtils as db
 import sources
 import movieLogger
-import tests.testUtils
+import tests.utils
 
 class testSource(unittest.TestCase):
     """
@@ -70,8 +70,8 @@ class testSource(unittest.TestCase):
 
         self.src = sources.Sources(dbfile = self._dbName)
 
-        self.util = tests.testUtils.Utils(dbfile = self._dbName,
-                                          logger = self.src.logger)
+        self.util = tests.utils.Utils(dbfile = self._dbName,
+                                      logger = self.src.logger)
 
         self.util.checkDbDataTestNames()
 
@@ -79,8 +79,9 @@ class testSource(unittest.TestCase):
         self.util.cleanUpTestData()
         unittest.TestCase.tearDown(self)
 
-    def testSchema(self, allTables = None):
-        """Verifies that the definitions of the db schema conforms to the expectations.
+    def testSchema(self):
+        """
+        Verifies that the definitions of the db schema conforms to the expectations.
         """
 
         self.src.logger.info("Verifying db schema tables...")
@@ -123,16 +124,14 @@ class testSource(unittest.TestCase):
         """
         places = self.src.getAllLocations(refresh = True)
 
-        self.assertTrue(isinstance(places, list) and \
-                        places != [], \
-                        "getAllPlaces() should return a list.")
+        self.assertTrue(isinstance(places, list) and places != [], \
+                        "getAllLocations() should return a list.")
 
-        self.assertTrue(isinstance(places[0], dict) and \
-                        places != [], \
-                        "getAllPlaces() should return a list of dictionaries.")
+        self.assertTrue(isinstance(places[0], dict) and places != [], \
+                        "getAllLocations() should return a list of dictionaries.")
 
         self.assertTrue(sorted(list(places[0].keys())) == sorted(['id', 'name']),
-                        "getAllPlaces() should return a list of dictionaries whose keys are 'id' and 'name'.")
+                        "getAllLocations() should return a list of dictionaries whose keys are 'id' and 'name'.")
 
     def testPlacesNames(self):
         """

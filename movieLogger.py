@@ -8,7 +8,8 @@ import logging
 import sys
 
 class MovieLoggger(object):
-    """Wrapper to get uniform logging across all the MovieDiversity modules.
+    """
+    Wrapper to get uniform logging across all the MovieDiversity modules.
     """
     LOGGER_NAME = 'MovieLogger'
 
@@ -21,10 +22,10 @@ class MovieLoggger(object):
                  'CRITICAL' : logging.CRITICAL
                 }
 
-    def initLogger(self, level = None):
+    def initLogger(self, level = None, loggerName = LOGGER_NAME):
         """
         This initialization functions should be called first to set the properties
-        of the logger named MovieLogger.LOGGER_NAME.
+        of the logger named loggerName (defaults to MovieLogger.LOGGER_NAME).
 
         After this has been called, all references obtained with
             logging.getLogger(MovileLogger.LOGGER_NNAME)
@@ -35,7 +36,7 @@ class MovieLoggger(object):
             (logging.[DEBUG|INFO|WARNNING|ERROR|CRITICAL])
             or as a number (0,10,20,30,40,50).
         """
-        logger = logging.getLogger(self.LOGGER_NAME)
+        logger = logging.getLogger(loggerName)
 
         if level is None:
             level = self._defaultLevel
@@ -45,7 +46,7 @@ class MovieLoggger(object):
 
         handler = logging.StreamHandler(sys.stdout)
 
-        formatter = logging.Formatter(fmt = '%(asctime)s - %(levelname)s - %(message)s',
+        formatter = logging.Formatter(fmt = '%(asctime)s - %(levelname)s - %(module)s#%(funcName)s - %(message)s',
                                       datefmt = '%Y-%m-%d %H:%M:%S')
         handler.setFormatter(formatter)
         logger.addHandler(handler)

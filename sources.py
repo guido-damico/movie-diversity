@@ -47,7 +47,6 @@ class Sources(object):
 
         self.logger.info("Source connected to db in '%s'", dbfile)
 
-
     def getAllLocations(self,
                         refresh = False):
         """Returns all the locations known to the class up to this point.
@@ -243,7 +242,8 @@ class Sources(object):
                                   t.title title,
                                   til.id tilid,
                                   min(s.date) first_show,
-                                  max(s.date) last_Show
+                                  max(s.date) last_Show,
+                                  locations_ref
                            FROM titles t,
                                 locations l,
                                 titles_in_locations til,

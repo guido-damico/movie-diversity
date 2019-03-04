@@ -65,8 +65,8 @@ class testMovieDbClasses(unittest.TestCase):
         resp = self.imdbClient.searchByTitle(self._SEARCH_STRIING_2)
         assert len(resp['results']) == 20, \
             "Expected 20 results, got %d" % len(resp['results'])
-        assert resp['total_results'] == 126, \
-            "Expected 126 total_results, got %d" % resp['total_results']
+        assert resp['total_results'] == 127, \
+            "Expected 127 total_results, got %d" % resp['total_results']
         assert resp['total_pages'] == 7, \
             "Expected 7 pages of results, got %d" % resp['total_pages']
         assert resp['results'][0]['title'] == self._SEARCH_STRIING_2_TITLE, \
@@ -77,6 +77,8 @@ class testMovieDbClasses(unittest.TestCase):
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] != "exportXML":
         unittest.main()
+        # suite = unittest.TestLoader().loadTestsFromTestCase(testMovieDbClasses)
+        # unittest.TextTestRunner(verbosity = 3).run(suite)
     else:
         del sys.argv[1]  # remove the exportXML flag, which is not to be passed to the runner
         unittest.main(testRunner = xmlrunner.XMLTestRunner(output = 'test-reports-imdbrestclient'))

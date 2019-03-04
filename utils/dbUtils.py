@@ -15,11 +15,11 @@ def connect(dbfile = None):
 
     assert dbfile != None, "Cannot build a connection to a NULL file, please specify a valid name."
 
-    out = sqlite3.connect(dbfile, isolation_level = None)
+    conn = sqlite3.connect(dbfile, isolation_level = None)
     # we use the Row class as factory so we have the columns' names as well
-    out.row_factory = sqlite3.Row
+    conn.row_factory = sqlite3.Row
 
-    return out
+    return conn
 
 def cursor(connection = None):
     """
@@ -28,9 +28,9 @@ def cursor(connection = None):
 
     assert connection != None, "Cannot build a cursor on a NULL connection."
 
-    out = connection.cursor()
+    cur = connection.cursor()
 
     # we always want the foreign keys constraints enforced!
-    out.execute("PRAGMA foreign_keys=ON;")
+    cur.execute("PRAGMA foreign_keys=ON;")
 
-    return out
+    return cur
