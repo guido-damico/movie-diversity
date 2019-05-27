@@ -31,7 +31,8 @@ class testMovieDbClasses(unittest.TestCase):
     session = None
     util = None
 
-    _dbName = '/home/guido/work/git/movie-diversity/movieDiversity.db'
+    # _dbName = '/home/guido/work/git/movie-diversity/movieDiversity.db'
+    _dbName = '/home/guido/work/git/movie-diversity/workingDb.db'
     _dbConnectString = 'sqlite:///' + _dbName
 
     _expectedClasses = [
@@ -62,11 +63,11 @@ class testMovieDbClasses(unittest.TestCase):
                 "id",
                 "title",
                 ],
-            "TitlesInLocations": [
-                "id",
-                "titles_ref",
-                "locations_ref",
-                ],
+             "TitlesInLocations": [
+                 "id",
+                 "titles_ref",
+                 "locations_ref",
+                 ],
             "Shows": [
                 "id",
                 "date",
@@ -84,7 +85,7 @@ class testMovieDbClasses(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super(testMovieDbClasses, cls).setUpClass()
-        movieLogger.MovieLoggger().initLogger('INFO')
+        movieLogger.MovieLoggger().initLogger('DEBUG')
 
     def setUp(self):
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
@@ -103,6 +104,10 @@ class testMovieDbClasses(unittest.TestCase):
         self.util.checkDbDataTestNames()
 
     def tearDown(self):
+        # for cleaning, no need to stay at DEBUG level
+        movieLogger.MovieLoggger().resetLoggingLevel('INFO')
+        self.util.cleanUpTestData()
+        movieLogger.MovieLoggger().resetLoggingLevel('DEBUG')
         unittest.TestCase.tearDown(self)
 
     def testDbClasses(self):
@@ -179,6 +184,88 @@ class testMovieDbClasses(unittest.TestCase):
             self.fail("Found column mismatch")
         else:
             self.logger.info("Columns check passed.")
+
+    def testInsertSites(self):
+        """
+        Verifies the 1-to-many relationship between Locations and sites works.
+        """
+        self.logger.info("Testing creation of Locations and Sites")
+
+        self.logger.debug("\tCreating locations.")
+        loc1 = Locations(name = self.util.getNewTestName() + "Poggibonsi", language = "toscano")
+        loc2 = Locations(name = self.util.getNewTestName() + "Corleone", language = "siculo")
+
+        self.logger.debug("\tCreating sites.")
+        aSite1 = movieDbClasses.Sites(name = self.util.getNewTestName() + "sitePoggi",
+                                     url = "example.com",
+                                     title_xpath = "*",
+                                     active = 1)
+
+        aSite2 = movieDbClasses.Sites(name = self.util.getNewTestName() + "sitePoggi_2",
+                                     url = "example.it",
+                                     title_xpath = "!*",
+                                     active = 1)
+        self.logger.debug("\tAdding sites to loc 1.")
+        loc1.sites.append(aSite1)
+        loc1.sites.append(aSite2)
+
+        self.session.add(loc1)
+        self.session.add(loc2)
+        self.session.commit()
+
+        self.session.add(aSite1)
+        self.session.add(aSite2)
+        self.session.commit()
+
+        self.assertTrue(loc1.id != None, "Loc1 should have been committed correctly and have a valid id.")
+        self.assertTrue(loc2.id != None, "Loc2 should have been committed correctly and have a valid id.")
+
+        self.assertTrue(aSite1.id != None, "aSite1 should have been committed correctly and have a valid id.")
+        self.assertTrue(aSite2.id != None, "aSite2 should have been committed correctly and have a valid id.")
+
+    def testInsertTitlesInLocations(self):
+        """
+        Verifies the 1-to-many relationship between Locations and sites works.
+        """
+        self.logger.info("Testing creation of Locations and Titles(InLocation)")
+
+        self.logger.debug("\tCreating locations.")
+        loc1 = Locations(name = self.util.getNewTestName() + "Poggibonsi", language = "toscano")
+        loc2 = Locations(name = self.util.getNewTestName() + "Corleone", language = "siculo")
+        self.session.add(loc1)
+        self.session.add(loc2)
+        self.session.commit()
+
+        self.assertTrue(loc1.id != None, "Loc1 should have been committed correctly and have a valid id.")
+        self.assertTrue(loc2.id != None, "Loc2 should have been committed correctly and have a valid id.")
+
+        self.logger.debug("\tCreating titles.")
+        aTitle1 = Titles(title = self.util.getNewTestName())
+        aTitle2 = Titles(title = self.util.getNewTestName())
+        self.session.add(aTitle1)
+        self.session.add(aTitle2)
+        self.session.commit()
+
+        self.assertTrue(aTitle1.id != None, "aTitle1 should have been committed correctly and have a valid id.")
+        self.assertTrue(aTitle2.id != None, "aTitle2 should have been committed correctly and have a valid id.")
+
+        self.logger.debug("\tLinking all titles to all locations.")
+        aTitle1InLoc1 = TitlesInLocations(titles_ref = aTitle1.id, locations_ref = loc1.id)
+        aTitle2InLoc1 = TitlesInLocations(titles_ref = aTitle2.id, locations_ref = loc1.id)
+        aTitle1InLoc2 = TitlesInLocations(titles_ref = aTitle1.id, locations_ref = loc2.id)
+        aTitle2InLoc2 = TitlesInLocations(titles_ref = aTitle2.id, locations_ref = loc2.id)
+        self.session.add(aTitle1InLoc1)
+        self.session.add(aTitle2InLoc1)
+        self.session.add(aTitle1InLoc2)
+        self.session.add(aTitle2InLoc2)
+        self.session.commit()
+
+        self.assertTrue(aTitle1InLoc1.id != None, "aTitle1InLoc1 should have been committed correctly and have a valid id.")
+        self.assertTrue(aTitle2InLoc1.id != None, "aTitle2InLoc1 should have been committed correctly and have a valid id.")
+        self.assertTrue(aTitle1InLoc2.id != None, "aTitle1InLoc2 should have been committed correctly and have a valid id.")
+        self.assertTrue(aTitle2InLoc2.id != None, "aTitle2InLoc2 should have been committed correctly and have a valid id.")
+
+        self.logger.info("Insertion completed.")
 
 if __name__ == "__main__":
     # import sys;sys.argv = ['', 'Test.testSource']

@@ -26,6 +26,8 @@ class testMovieDbClasses(unittest.TestCase):
     _SEARCH_STRIING_1 = "Il cielo sopra Berlino"
     _SEARCH_STRIING_2 = "rosso"
     _SEARCH_STRIING_2_TITLE = "Deep Red"
+    _SEARCH_STRIING_2_NUMBER = 129
+    _SEARCH_STRIING_2_PAGES = 7
     _SEARCH_STRIING_2_ORIGINAL_TITLE = "Profondo rosso"
 
     @classmethod
@@ -65,10 +67,11 @@ class testMovieDbClasses(unittest.TestCase):
         resp = self.imdbClient.searchByTitle(self._SEARCH_STRIING_2)
         assert len(resp['results']) == 20, \
             "Expected 20 results, got %d" % len(resp['results'])
-        assert resp['total_results'] == 127, \
-            "Expected 127 total_results, got %d" % resp['total_results']
-        assert resp['total_pages'] == 7, \
-            "Expected 7 pages of results, got %d" % resp['total_pages']
+        assert resp['total_results'] == self._SEARCH_STRIING_2_NUMBER, \
+            "Expected %s total_results, got %d" % (self._SEARCH_STRIING_2_NUMBER, resp['total_results'])
+
+        assert resp['total_pages'] == self._SEARCH_STRIING_2_PAGES, \
+            "Expected %d pages of results, got %d" % (self._SEARCH_STRIING_2_PAGES, resp['total_pages'])
         assert resp['results'][0]['title'] == self._SEARCH_STRIING_2_TITLE, \
             "Expected title '%s', got '%s'" % (self._SEARCH_STRIING_2_TITLE, resp['results'][0]['title'])
         assert resp['results'][0]['original_title'] == self._SEARCH_STRIING_2_ORIGINAL_TITLE, \

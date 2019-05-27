@@ -70,7 +70,7 @@ class Sources(object):
         If "Refresh" is set to True, or if there is no data in the cache,
         performs a new query to the db to get fresh data.
 
-        The data returns is in the form of a list of dictionaries with the
+        The data returned is in the form of a list of dictionaries with the
         information about the URL, title_xpath, and Active status of the sites
         connected to the given location.
         """
@@ -216,7 +216,7 @@ class Sources(object):
             showId = cur.fetchone()
 
             if showId != None:
-                # show was alradt recorded
+                # show was already recorded
                 newId = showId['id']
             else:
                 # new show: insert new record

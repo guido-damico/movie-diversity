@@ -63,7 +63,7 @@ class testSource(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super(testSource, cls).setUpClass()
-        movieLogger.MovieLoggger().initLogger('INFO')
+        movieLogger.MovieLoggger().initLogger('DEBUG')
 
     def setUp(self):
         unittest.TestCase.setUp(self)
@@ -180,16 +180,33 @@ class testSource(unittest.TestCase):
         """
         Tests inserting a test title in a location.
         """
+        self.src.logger.debug("Verification of inserting a title in a given location.")
         testTitle = self.util.getNewTestName()
+
+        self.src.logger.debug("\tInserting %s in location 1." % (testTitle))
         (tid1, tilid1) = self.src.insertTitleInLocation(title = testTitle,
                                                         locationId = 1)
         self.assertTrue(isinstance(tid1, int), 'Id for titles should be returned as an integer (got: %s).' % tid1)
+        self.assertTrue(isinstance(tilid1, int), 'Id for titlesInLocation should be returned as an integer (got: %s).' % tilid1)
 
+        self.src.logger.debug("\tRe-inserting the same %s in location 1." % (testTitle))
         (tid2, tilid2) = self.src.insertTitleInLocation(title = testTitle,
                                                         locationId = 1)
-        self.assertTrue(tid1 == tid2, 'Second insertion should return the original id (%s, got: %s).' % (tid1, tid2))
+        self.assertTrue(isinstance(tid2, int), 'Id for titles in new location should be returned as an integer (got: %s).' % tid2)
+        self.assertTrue(isinstance(tilid2, int), 'Id for titlesInLocation in new location should be returned as an integer (got: %s).' % tilid2)
+        self.assertTrue(tid1 == tid2, 'Second insertion should return the original title id (%s, got: %s).' % (tid1, tid2))
+        self.assertTrue(tilid1 == tilid2, 'Second insertion should return the original TiL id (%s, got: %s).' % (tid1, tid2))
+
+        self.src.logger.debug("\tInserting %s in location 2." % (testTitle))
+        (tid3, tilid3) = self.src.insertTitleInLocation(title = testTitle,
+                                                        locationId = 2)
+        self.assertTrue(isinstance(tid3, int), 'Id for titles in new location should be returned as an integer (got: %s).' % tid3)
+        self.assertTrue(isinstance(tilid3, int), 'Id for titlesInLocation in new location should be returned as an integer (got: %s).' % tilid3)
+        self.assertTrue(tid1 == tid3, 'Second insertion should return the original title id (%s, got: %s).' % (tid1, tid3))
+        self.assertTrue(tilid1 != tilid3, 'Insertion in a new location should return the a new TiL id (got: %s).' % (tid3))
 
         try:
+            self.src.logger.debug("\tInserting NULL title in location 1.")
             (tid1, tilid1) = self.src.insertTitleInLocation(title = None, locationId = 1)
             self.fail('Inserting a null title should throw an exception. Got (tid, tilid) = (%d, %d)' % (tid1, tilid1))
 
@@ -200,19 +217,21 @@ class testSource(unittest.TestCase):
 
         try:
             testTitle = self.util.getNewTestName()
+            self.src.logger.debug("\tInserting title %s in location NULL." % testTitle)
             (tid1, tilid1) = self.src.insertTitleInLocation(title = testTitle, locationId = None)
             self.fail('Inserting a null location should throw an exception. . Got (tid, tilid) = (%d, %d)' % (tid1, tilid1))
 
         except AssertionError:
-            pass
+            self.src.logger.info("IntegrityError thrown by the db as expected for NULL location.")
 
         try:
             testTitle = self.util.getNewTestName()
+            self.src.logger.debug("\tInserting title %s in location -1." % testTitle)
             (tid1, tilid1) = self.src.insertTitleInLocation(title = testTitle, locationId = -1)
             self.fail('Inserting an invalid location should throw an exception. . Got (tid, tilid) = (%d, %d)' % (tid1, tilid1))
 
         except sqlite3.IntegrityError:
-            pass
+            self.src.logger.info("IntegrityError thrown by the db as expected for invalid location.")
 
     def testInsertShow(self):
         """
