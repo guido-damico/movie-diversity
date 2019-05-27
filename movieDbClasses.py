@@ -24,7 +24,15 @@ class movieDbBaseClass():
         """
         mapper = inspect(classInstance)
 
-class Locations(Base):
+        return mapper
+
+    def getColumnNames(self):
+        """
+        Returns a list of the columns defined for this class.
+        """
+        return [x for x in self.__dict__.keys() if x[0] != "_"]
+
+class Locations(Base, movieDbBaseClass):
     """
     Table for all locations.
     """
@@ -32,8 +40,9 @@ class Locations(Base):
     id = Column(Integer, primary_key = True)
     name = Column(String(250))
     language = Column(String(250))
+    sites = relationship("Sites")
 
-class Sites(Base):
+class Sites(Base, movieDbBaseClass):
     """
     Table for all sites.
     """
@@ -46,7 +55,7 @@ class Sites(Base):
     locations_ref = Column(Integer, ForeignKey("locations.id"))
     CheckConstraint("active  in (0, 1)", name = "site_active_constraint")
 
-class Titles(Base):
+class Titles(Base, movieDbBaseClass):
     """
     Table for all titles.
     """
@@ -54,18 +63,16 @@ class Titles(Base):
     id = Column(Integer, primary_key = True)
     title = Column(String(250))
 
-class TitlesInLocations(Base):
+class TitlesInLocations(Base, movieDbBaseClass):
     """
     Many to many relation linking titles and locations.
     """
     __tablename__ = 'titles_in_locations'
     id = Column(Integer, primary_key = True)
     titles_ref = Column(Integer, ForeignKey('titles.id'))
-    titles = relationship(Titles)
     locations_ref = Column(Integer, ForeignKey('locations.id'))
-    locations = relationship(Locations)
 
-class Shows(Base):
+class Shows(Base, movieDbBaseClass):
     """
     Table for all shows.
     """
@@ -73,9 +80,8 @@ class Shows(Base):
     id = Column(Integer, primary_key = True)
     date = Column(String(250))
     titles_in_locations_ref = Column(Integer, ForeignKey('titles_in_locations.id'))
-    locations = relationship(TitlesInLocations)
 
-class Translations(Base):
+class Translations(Base, movieDbBaseClass):
     """
     Table for all translations.
     """
@@ -84,7 +90,5 @@ class Translations(Base):
     lang_from = Column(String(250))
     lang_to = Column(String(250))
     title_from_ref = Column(Integer, ForeignKey('titles.id'))
-    titleFrom = relationship(Titles, foreign_keys = [title_from_ref])
     title_to_ref = Column(Integer, ForeignKey('titles.id'))
-    titleTo = relationship(Titles, foreign_keys = [title_to_ref])
 

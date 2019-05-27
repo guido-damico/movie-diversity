@@ -10,7 +10,7 @@ import argparse
 from pprint import pformat
 import requests
 from lxml import html
-import sources
+import sourcesAlchemy
 import movieLogger
 from utils import stringUtils
 
@@ -29,7 +29,7 @@ class Scraper(object):
         Builds a local instance of the Sources class and
         one of the MovieLogger engine.
         """
-        self._source = sources.Sources(dbfile = dbfile)
+        self._source = sourcesAlchemy.SourcesAlchemy(dbfile = dbfile)
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
 
         self.logger.info("Scraper instance inited.")
@@ -41,7 +41,7 @@ class Scraper(object):
         """
 
         # Gets the movie titles
-        locationData = self._source.getLocationData(locationName = locationName)
+        locationData = self._source.getLocationSitesData(locationName = locationName)
         assert isinstance(locationData, type([])), \
                           "Expected a list for locations, instead got %s" % type(locationData)
         titles = self.getMoviesTitlesInLocation(locationName = locationName)
@@ -79,7 +79,7 @@ class Scraper(object):
 
         titles = set()
 
-        data = self._source.getLocationData(locationName)
+        data = self._source.getLocationSitesData(locationName)
 
         # for every active site in the list, get the titles and insert them in the output set
         for site in data:

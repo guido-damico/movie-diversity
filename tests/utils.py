@@ -34,7 +34,10 @@ class Utils(object):
         """
         output = {'titles': 0,
                   'titles_in_locations': 0,
-                  'shows': 0}
+                  'shows': 0,
+                  'locations': 0,
+                  'sites': 0,
+                  }
 
         with (closing(self._conn.cursor())) as cur:
             cur.execute("SELECT id FROM titles WHERE title like ?;", (self.baseTestName + "%",))
@@ -54,6 +57,14 @@ class Utils(object):
             recs = cur.fetchall()
             output['shows'] = [x['id'] for x in recs]
 
+            cur.execute("SELECT id FROM sites WHERE name like ?;", (self.baseTestName + "%",))
+            recs = cur.fetchall()
+            output['sites'] = [x['id'] for x in recs]
+
+            cur.execute("SELECT id FROM locations WHERE name like ?;", (self.baseTestName + "%",))
+            recs = cur.fetchall()
+            output['locations'] = [x['id'] for x in recs]
+
         return output
 
     def checkDbDataTestNames(self):
@@ -62,11 +73,16 @@ class Utils(object):
         To clean it up call cleanUpTestData().
         To see which record are triggering the exception run getDbTestRecords().
         """
-        alreadyThere = self.getDbTestRecords()
-        if len(alreadyThere['titles']) + len(alreadyThere['shows']) > 0:
-            raise RuntimeError("Name conflict: found already %d records.\n" % \
-                               (len(alreadyThere['titles']) + len(alreadyThere['shows'])) + \
-                               "Please clean up the testing db first.")
+        testRecords = self.getDbTestRecords()
+        totLen = len(testRecords['titles']) + \
+                 len(testRecords['titles_in_locations']) + \
+                 len(testRecords['shows']) + \
+                 len(testRecords['sites']) + \
+                 len(testRecords['locations'])
+
+        if totLen > 0:
+            raise RuntimeError("Name conflict: found already %d test records.\n" % \
+                               (totLen) + "Please clean up the testing db first.")
 
     def cleanUpTestData(self):
         """
@@ -74,11 +90,17 @@ class Utils(object):
         """
         with (closing(self._conn.cursor())) as cur:
             testRecords = self.getDbTestRecords()
-            totLen = len(testRecords['titles']) + len(testRecords['titles_in_locations']) + len(testRecords['shows'])
+            totLen = len(testRecords['titles']) + \
+                     len(testRecords['titles_in_locations']) + \
+                     len(testRecords['shows']) + \
+                     len(testRecords['sites']) + \
+                     len(testRecords['locations'])
 
-            self._logger.info("Cleaning up: Found %d titles test record(s).", len(testRecords['titles']))
-            self._logger.info("Cleaning up: Found %d titles_in_locations test record(s).", len(testRecords['titles_in_locations']))
-            self._logger.info("Cleaning up: Found %d shows test record(s).", len(testRecords['shows']))
+            self._logger.debug("Cleaning up: Found %d titles test record(s).", len(testRecords['titles']))
+            self._logger.debug("Cleaning up: Found %d titles_in_locations test record(s).", len(testRecords['titles_in_locations']))
+            self._logger.debug("Cleaning up: Found %d shows test record(s).", len(testRecords['shows']))
+            self._logger.debug("Cleaning up: Found %d sites test record(s).", len(testRecords['sites']))
+            self._logger.debug("Cleaning up: Found %d locations test record(s).", len(testRecords['locations']))
 
             if totLen > 0:
                 try:
@@ -86,6 +108,8 @@ class Utils(object):
 
                     placeholdersTId = ', '.join('?' * len(testRecords['titles']))
                     placeholdersTILId = ', '.join('?' * len(testRecords['titles_in_locations']))
+                    placeholdersLocId = ', '.join('?' * len(testRecords['locations']))
+                    placeholdersSiteId = ', '.join('?' * len(testRecords['sites']))
 
                     qry = "DELETE FROM shows WHERE titles_in_locations_ref in (%s);" % placeholdersTILId
                     cur.execute(qry, testRecords['titles_in_locations'])
@@ -98,6 +122,14 @@ class Utils(object):
                     qry = "DELETE FROM titles WHERE id in (%s);" % placeholdersTId
                     cur.execute(qry, testRecords['titles'])
                     self._logger.info("Deleted %d titles test record(s).", cur.rowcount)
+
+                    qry = "DELETE FROM sites WHERE id in (%s);" % placeholdersSiteId
+                    cur.execute(qry, testRecords['sites'])
+                    self._logger.info("Deleted %d sites test record(s).", cur.rowcount)
+
+                    qry = "DELETE FROM locations WHERE id in (%s);" % placeholdersLocId
+                    cur.execute(qry, testRecords['locations'])
+                    self._logger.info("Deleted %d locations test record(s).", cur.rowcount)
 
                 except Exception as e:
                     self._logger.error("Failed to properly clean up the test data! You may need to clean up manually to resume operations.")
