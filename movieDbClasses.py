@@ -70,9 +70,7 @@ class TitlesInLocations(Base, movieDbBaseClass):
     __tablename__ = 'titles_in_locations'
     id = Column(Integer, primary_key = True)
     titles_ref = Column(Integer, ForeignKey('titles.id'))
-#    titles = relationship(Titles)
     locations_ref = Column(Integer, ForeignKey('locations.id'))
-#    locations = relationship(Locations)
 
 class Shows(Base, movieDbBaseClass):
     """
@@ -82,7 +80,6 @@ class Shows(Base, movieDbBaseClass):
     id = Column(Integer, primary_key = True)
     date = Column(String(250))
     titles_in_locations_ref = Column(Integer, ForeignKey('titles_in_locations.id'))
-#    locations = relationship(TitlesInLocations)
 
 class Translations(Base, movieDbBaseClass):
     """
@@ -93,7 +90,5 @@ class Translations(Base, movieDbBaseClass):
     lang_from = Column(String(250))
     lang_to = Column(String(250))
     title_from_ref = Column(Integer, ForeignKey('titles.id'))
-#    titleFrom = relationship(Titles, foreign_keys = [title_from_ref])
     title_to_ref = Column(Integer, ForeignKey('titles.id'))
-#    titleTo = relationship(Titles, foreign_keys = [title_to_ref])
 
