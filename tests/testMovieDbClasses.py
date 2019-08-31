@@ -194,25 +194,24 @@ class testMovieDbClasses(unittest.TestCase):
         self.logger.debug("\tCreating locations.")
         loc1 = Locations(name = self.util.getNewTestName() + "Poggibonsi", language = "toscano")
         loc2 = Locations(name = self.util.getNewTestName() + "Corleone", language = "siculo")
+        self.session.add(loc1)
+        self.session.add(loc2)
+        self.session.commit()
 
         self.logger.debug("\tCreating sites.")
         aSite1 = movieDbClasses.Sites(name = self.util.getNewTestName() + "sitePoggi",
                                      url = "example.com",
                                      title_xpath = "*",
-                                     active = 1)
+                                     active = 1,
+                                     locations_ref = loc1.id)
 
         aSite2 = movieDbClasses.Sites(name = self.util.getNewTestName() + "sitePoggi_2",
                                      url = "example.it",
                                      title_xpath = "!*",
-                                     active = 1)
-        self.logger.debug("\tAdding sites to loc 1.")
-        loc1.sites.append(aSite1)
-        loc1.sites.append(aSite2)
+                                     active = 0,
+                                     locations_ref = loc2.id)
 
-        self.session.add(loc1)
-        self.session.add(loc2)
-        self.session.commit()
-
+        self.logger.debug("\tAdding sites to db.")
         self.session.add(aSite1)
         self.session.add(aSite2)
         self.session.commit()

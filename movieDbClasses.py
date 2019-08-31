@@ -40,7 +40,7 @@ class Locations(Base, movieDbBaseClass):
     id = Column(Integer, primary_key = True)
     name = Column(String(250))
     language = Column(String(250))
-    sites = relationship("Sites")
+#    sites = relationship("Sites")
 
 class Sites(Base, movieDbBaseClass):
     """

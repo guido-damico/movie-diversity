@@ -16,6 +16,7 @@ from utils import stringUtils
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy import event
+from sqlalchemy import func
 
 import movieDbClasses
 from movieDbClasses import Locations
@@ -98,6 +99,8 @@ class SourcesAlchemy(object):
                         refresh = False):
         """
         Returns all the locations known to the class up to this point.
+        Return type is a list of Locations class instances.
+
         If "Refresh" is set to True, or if there are not locations in the cache,
         performs a new query to the db to get fresh data.
         """
@@ -172,9 +175,53 @@ class SourcesAlchemy(object):
         # Build the dictionary in output
         for rec in recs:
             output.append({'id': rec.Titles.id,
-                           'name': rec.Titles.title,
+                           'title': rec.Titles.title,
                            'locations_ref': rec.Locations.id,
                            'tilid': rec.TitlesInLocations.id})
+
+        return output
+
+    def getAllTitlesInLocation(self, locationsId = None):
+        """
+        Given a locations Id, returns a list of dictionaries representing the titles.
+
+        Output structure:
+            [{'tid': title Id,
+              'tilid': titles_in_locaitons id,
+              'title': title string,
+              'first_show': date of the first show of this title in this location,
+              'last_show': date of the most recent show of this title in this location,
+              'locations_ref': id of the location}]
+        """
+        output = []
+
+        # query
+        recs = self.session.query(self.titlesClass.id.label("titles_id"), \
+                                  self.titlesClass.title, \
+                                  self.locationClass.id.label("locations_id"), \
+                                  self.locationClass.language.label("language"), \
+                                  self.titlesInLocationsClass.id.label("titles_in_locations_id"), \
+                                  func.min(self.showsClass.date).label("first_show"), \
+                                  func.max(self.showsClass.date).label("last_show")) \
+                           .filter(Titles.id == TitlesInLocations.titles_ref) \
+                           .filter(TitlesInLocations.locations_ref == Locations.id) \
+                           .filter(TitlesInLocations.locations_ref == locationsId) \
+                           .filter(Shows.titles_in_locations_ref == TitlesInLocations.id) \
+                           .group_by(Titles.id) \
+                           .group_by(TitlesInLocations.id) \
+                           .order_by(Titles.title) \
+                           .all()
+
+        # Build the dictionary in output
+        self.logger.debug("\t\tGot: %d titles" % len(recs))
+        output = [{'tid': rec.titles_id, \
+                   'tilid': rec.titles_in_locations_id, \
+                   'title': rec.title, \
+                   'first_show': rec.first_show, \
+                   'last_show': rec.last_show, \
+                   'locations_ref': rec.locations_id, \
+                   'language': rec.language} \
+                  for rec in recs]
 
         return output
 
@@ -201,13 +248,13 @@ class SourcesAlchemy(object):
         dbTitles = self.getAllTitlesAndLocations()
         # check whether the title is similar to one already in for this location
         similar = [x for x in dbTitles if x['locations_ref'] == locationId \
-                                        and (stringUtils.isSimilar(aTitle, x['name']))
+                                        and (stringUtils.isSimilar(aTitle, x['title']))
                   ]
 
         if len(similar) == 1:
             # found a similar title already in
             self.logger.debug("Found title '%s', similar to '%s' already in the db: using db version.", \
-                             aTitle, similar[0]['name'])
+                             aTitle, similar[0]['title'])
             newTitleId = similar[0]['id']
             newTitleInLocationId = similar[0]['tilid']
 
@@ -218,13 +265,13 @@ class SourcesAlchemy(object):
         else:
             # this title is not in the given location: check all other locations
             similar = [x for x in dbTitles if x['locations_ref'] != locationId \
-                                      and (stringUtils.isSimilar(aTitle, x['name']))
+                                      and (stringUtils.isSimilar(aTitle, x['title']))
                       ]
             if len(similar) >= 1:
                 # found a similar title in a different location
                 self.logger.debug("Found title '%s', similar to '%s' already in the db " + \
                                  "but in a different location (%d): adding current location.", \
-                                 aTitle, similar[0]['name'], locationId)
+                                 aTitle, similar[0]['title'], locationId)
                 newTitleInLocation = TitlesInLocations(titles_ref = similar[0]['id'], locations_ref = locationId)
                 self.session.add(newTitleInLocation)
                 newTitleInLocationId = self.session.commit()

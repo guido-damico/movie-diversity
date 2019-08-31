@@ -9,20 +9,21 @@ import xmlrunner
 import movieLogger
 import logging
 
-from utils.timdb import imdbRestClient
+from tmdb import tmdbRestClient
 
-class testMovieDbClasses(unittest.TestCase):
+class testTimdb(unittest.TestCase):
     """
-    Tests for the movieDbClasses class.
+    Tests for the Timdb client.
     """
 
     logger = None
-    imdbClient = None
+    tmdbRestClient = None
 
-    _IMDB_API_KEY = "09ac37f03df193fc3b81b7f4c097e8e2"
-    _FULL_TEST_URL = "https://api.themoviedb.org/3/movie/144?api_key=" + _IMDB_API_KEY + "&language=en-US"
+    # _IMDB_API_KEY = "09ac37f03df193fc3b81b7f4c097e8e2"
+    # _FULL_TEST_URL = "https://api.themoviedb.org/3/movie/144?api_key=" + _IMDB_API_KEY + "&language=en-US"
     _MOVIE_ID = 144
     _MOVIE_TITLE = "Wings of Desire"
+    _MOVIE_TITLE_ORIG = "Der Himmel über Berlin"
     _SEARCH_STRIING_1 = "Il cielo sopra Berlino"
     _SEARCH_STRIING_2 = "rosso"
     _SEARCH_STRIING_2_TITLE = "Deep Red"
@@ -32,50 +33,47 @@ class testMovieDbClasses(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(testMovieDbClasses, cls).setUpClass()
+        super(testTimdb, cls).setUpClass()
         movieLogger.MovieLoggger().initLogger('INFO')
 
     def setUp(self):
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
-        self.imdbClient = imdbRestClient()
+        self.tmdbRestClient = tmdbRestClient()
 
         unittest.TestCase.setUp(self)
 
     def tearDown(self):
         unittest.TestCase.tearDown(self)
 
-    def testSimpleGet(self):
-        self.logger.info("Requesting GET: %s" % self._FULL_TEST_URL)
-        resp = self.imdbClient.get(url = self._FULL_TEST_URL)
-        self.logger.debug("Got back: %s" % resp)
-
     def testGetTitleFromId(self):
         self.logger.info("Looking up movie by Id : %s" % self._MOVIE_ID)
-        resp = self.imdbClient.getTitle(self._MOVIE_ID)
+        resp = self.tmdbRestClient.getTitleById(self._MOVIE_ID)
         assert resp['title'] == self._MOVIE_TITLE, \
             "Expected title for movie %d to be '%s', got: %s" % (self._MOVIE_ID, self._MOVIE_TITLE, resp['title'])
 
     def testSearchByTitle(self):
         self.logger.info("Searching movies by keyword : %s" % self._SEARCH_STRIING_1)
-        resp = self.imdbClient.searchByTitle(self._SEARCH_STRIING_1)
+        resp = self.tmdbRestClient.searchByTitle(title = self._SEARCH_STRIING_1, language = "it")
         assert len(resp['results']) == 1, \
             "Expected 1 result, got %d" % len(resp['results'])
-        assert resp['results'][0]['title'] == self._MOVIE_TITLE, \
-            "Expected title '%s', got '%s'" % (self._MOVIE_TITLE, resp['results'][0]['title'])
+        assert resp['results'][0]['original_title'] == self._MOVIE_TITLE_ORIG, \
+            "Expected original title '%s', got '%s'" % (self._MOVIE_TITLE_ORIG, resp['results'][0]['title'])
+        assert resp['results'][0]['title'] == self._SEARCH_STRIING_1, \
+            "Expected Italian title '%s', got '%s'" % (self._SEARCH_STRIING_1, resp['results'][0]['title'])
 
         self.logger.info("Searching movies by keyword : %s" % self._SEARCH_STRIING_2)
-        resp = self.imdbClient.searchByTitle(self._SEARCH_STRIING_2)
-        assert len(resp['results']) == 20, \
-            "Expected 20 results, got %d" % len(resp['results'])
-        assert resp['total_results'] == self._SEARCH_STRIING_2_NUMBER, \
-            "Expected %s total_results, got %d" % (self._SEARCH_STRIING_2_NUMBER, resp['total_results'])
+        resp = self.tmdbRestClient.searchByTitle(self._SEARCH_STRIING_2)
+        assert len(resp['results']) == resp['total_results'], \
+            "Expected %d results, got %d" % (resp['total_results'], len(resp['results']))
+        assert resp['total_results'] >= self._SEARCH_STRIING_2_NUMBER, \
+            "Expected at least %s total_results, got %d" % (self._SEARCH_STRIING_2_NUMBER, resp['total_results'])
 
         assert resp['total_pages'] == self._SEARCH_STRIING_2_PAGES, \
             "Expected %d pages of results, got %d" % (self._SEARCH_STRIING_2_PAGES, resp['total_pages'])
-        assert resp['results'][0]['title'] == self._SEARCH_STRIING_2_TITLE, \
-            "Expected title '%s', got '%s'" % (self._SEARCH_STRIING_2_TITLE, resp['results'][0]['title'])
-        assert resp['results'][0]['original_title'] == self._SEARCH_STRIING_2_ORIGINAL_TITLE, \
-            "Expected original title '%s', got '%s'" % (self._SEARCH_STRIING_2_ORIGINAL_TITLE, resp['results'][0]['original_title'])
+
+        allResultsSet = set(x['title'] for x in resp['results'])
+        assert self._SEARCH_STRIING_2_TITLE in allResultsSet, \
+            "Expected title '%s' among the results, got '%s'" % (self._SEARCH_STRIING_2_TITLE, allResultsSet)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] != "exportXML":
