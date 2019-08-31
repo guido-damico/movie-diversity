@@ -20,7 +20,7 @@ class TranslationMatcher(object):
     Module which will match a title with its translations in the db.
     """
     source = None
-    timdbClient = None
+    tmdbClient = None
     allTitles = None
     logger = None
 
@@ -32,7 +32,7 @@ class TranslationMatcher(object):
         self.source = sourcesAlchemy.SourcesAlchemy(dbfile = dbfile)
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
 
-        self.timdbClient = tmdb.tmdbRestClient()
+        self.tmdbClient = tmdb.tmdbRestClient()
 
         self.logger.info("TranslationMatcher instance inited.")
 
@@ -58,7 +58,7 @@ class TranslationMatcher(object):
                 aTitleInLoc['title'] = stringUtils.cleanupTitle(aTitleInLoc['title'])
 
                 # look it up on imdb
-                movieRec = self.timdbClient.searchByTitle(aTitleInLoc['title'], loc.language)
+                movieRec = self.tmdbClient.searchByTitle(aTitleInLoc['title'], loc.language)
                 self.logger.debug("Got %d titles for %s" % (len(movieRec['results']), aTitleInLoc['title']))
 
                 # check if the translation returned is != from original title
