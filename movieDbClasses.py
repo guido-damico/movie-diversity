@@ -88,7 +88,6 @@ class Translations(Base, movieDbBaseClass):
     __tablename__ = 'translations'
     id = Column(Integer, primary_key = True)
     lang_from = Column(String(250))
-    lang_to = Column(String(250))
     title_from_ref = Column(Integer, ForeignKey('titles.id'))
-    title_to_ref = Column(Integer, ForeignKey('titles.id'))
+    tmdb_id = Column(Integer, nullable = False)
 

@@ -55,6 +55,8 @@ class tmdbRestClient(object):
 
         if response.status_code > 299:
             self.logger.error("Response was error: %d, %s" % (response.status_code, response))
+            # TODO: add error handling bubbling it up to the caller
+            # use: json.loads(('{"error": "True", "error message": "No title found."}')
 
         return json.loads(response.text)
 

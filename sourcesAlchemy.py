@@ -80,12 +80,12 @@ class SourcesAlchemy(object):
         self.session = DBSession()
 
         # store copy of the db wrapper classes
-        # create an instance of the Locations class
         self.locationClass = getattr(movieDbClasses, "Locations")
         self.sitesClass = getattr(movieDbClasses, "Sites")
         self.titlesClass = getattr(movieDbClasses, "Titles")
         self.titlesInLocationsClass = getattr(movieDbClasses, "TitlesInLocations")
         self.showsClass = getattr(movieDbClasses, "Shows")
+        self.translationClass = getattr(movieDbClasses, "Translations")
 
         self.logger.debug("Created wrapper classes container instances")
 
@@ -213,7 +213,7 @@ class SourcesAlchemy(object):
                            .all()
 
         # Build the dictionary in output
-        self.logger.debug("\t\tGot: %d titles" % len(recs))
+        self.logger.debug("Got: %d titles" % len(recs))
         output = [{'tid': rec.titles_id, \
                    'tilid': rec.titles_in_locations_id, \
                    'title': rec.title, \
@@ -345,6 +345,76 @@ class SourcesAlchemy(object):
             newShowId = shows_recs[0].id
 
         return newShowId
+
+    def getAllTranslationsAlreadyIn(self, titlesRef = None, lang_from = None):
+        """
+            Returns all the translations for this title already in the table. 
+        """
+        # find any other translation for this title
+        translation_recs = self.session.query(self.translationClass) \
+                         .filter(Translations.title_from_ref == titlesRef) \
+                         .all()
+
+        # if there is a record with exactly the same translation, return just that one
+        if lang_from in set([x.lang_from for x in translation_recs]):
+            translation_recs = [x for x in translation_recs if x.lang_from == lang_from]
+
+        # Build the dictionary in output
+        output = [{'id': rec.id, \
+                   'title_from_ref': rec.title_from_ref, \
+                   'lang_from': rec.lang_from, \
+                   'tmdb_id': rec.tmdb_id} \
+                  for rec in translation_recs]
+
+        return output
+
+    def insertTranslation(self, titlesRef = None, lang_from = None, tmdb_id = None):
+        """
+        Links a new translation for the given title_ref in the specified language for the movie with that tmdb_id.
+        If the same (titles_ref , lang, tmdb_d) tuple is already there, this is a no-op.
+
+        If date is None, then today's date is used.
+        The format for the date string should be '%Y-%m-%d'.
+
+        Returns the show primary key.
+        """
+        assert titlesRef != None, "Cannot insert a translation with a null titlesRef!"
+        assert isinstance(titlesRef, int), "Cannot insert a translation with a titlesRef of type %s, should be an int!" % (type(titlesRef))
+        assert tmdb_id != None, "Cannot insert a show with a null tmdb id"
+        assert isinstance(tmdb_id, int), "Cannot insert a show with a tmdb id of type %s, should be an int!" % (type(tmdb_id))
+
+        # decision flag
+        addTranslation = False
+
+        # return value
+        newTranslationId = None
+
+        # get any other translation for this title
+        translation_recs = self.getAllTranslationsAlreadyIn(titlesRef, lang_from)
+
+        if len(translation_recs) == 0:
+            # brand new translation
+            addTranslation = True
+
+        else:
+            # one or more translations here already: look for the same language
+            sameLanguage = [x for x in translation_recs if x['lang_from'] == lang_from]
+
+            if len(sameLanguage) == 0:
+                # new translation for a known title: add it
+                addTranslation = True
+
+            elif len(sameLanguage) == 1:
+                # translation was already in: return it
+                newTranslationId = sameLanguage[0]['id']
+
+        if addTranslation:
+            newTranslation = Translations(title_from_ref = titlesRef, lang_from = lang_from, tmdb_id = tmdb_id)
+            self.session.add(newTranslation)
+            newTranslationId = self.session.commit()
+            newTranslationId = newTranslation.id
+
+        return newTranslationId
 
     def rollbackSession(self):
         """
