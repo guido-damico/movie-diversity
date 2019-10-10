@@ -11,6 +11,7 @@ import logging
 from time import sleep
 import movieLogger
 import utils.stringUtils as stringUtils
+import utils.propertiesFileReader as propertiesFileReader
 
 import json
 
@@ -29,15 +30,21 @@ class tmdbRestClient(object):
     logger = None
 
     _TIMDB_API_URL = "https://api.themoviedb.org/3/"
-    _KEY_ARG = "api_key=09ac37f03df193fc3b81b7f4c097e8e2"
+    _TMDB_PROPERTIES_FILE = 'tmdb.properties'
+    _KEY_ARG = ""
     _LANG_ARG = "&language=en-US"
     _SITE_CONFIG = {}
 
-    def __init__(self, params = None):
+    def __init__(self):
         """
-        Constructor. Inits the logger and get the remote configurations.
+        Constructor. Init the logger, read the tmdb key, and get the remote configurations.
         """
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
+
+        # read the key to connect to the db from the properties file
+        props = propertiesFileReader.PropertiesFileReader().readPropertiesFile(self._TMDB_PROPERTIES_FILE)
+        self._KEY_ARG = "api_key=" + props['api_key']
+
         self.storeConfigurations()
 
     def get(self, url = None):

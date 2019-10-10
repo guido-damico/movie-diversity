@@ -13,7 +13,7 @@ from sqlalchemy.sql.schema import CheckConstraint
 
 Base = declarative_base()
 
-class movieDbBaseClass():
+class movieDbBaseClass(object):
     """
     Base class that captures common behaviors in this package. 
     """
