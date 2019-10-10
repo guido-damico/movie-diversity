@@ -69,3 +69,12 @@ def isAnInt(inputString = None):
 
         except ValueError:
             return False
+
+def cleanupTitle(title = ""):
+    """
+        Given a title, removes ditry portions: "(OV)", "3D", etc. 
+    """
+    title = title.replace("(OV)", "")
+    title = title.replace("3D", "")
+
+    return title.strip()

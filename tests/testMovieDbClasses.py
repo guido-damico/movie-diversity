@@ -21,6 +21,7 @@ from movieDbClasses import Titles
 from movieDbClasses import TitlesInLocations
 from movieDbClasses import Shows
 from movieDbClasses import Translations
+from movieDbClasses import SQLite_Master
 
 class testMovieDbClasses(unittest.TestCase):
     """
@@ -42,7 +43,8 @@ class testMovieDbClasses(unittest.TestCase):
             Titles,
             TitlesInLocations,
             Shows,
-            Translations
+            Translations,
+            SQLite_Master
         ]
 
     _expectedColumns = {
@@ -79,6 +81,13 @@ class testMovieDbClasses(unittest.TestCase):
                 "lang_to",
                 "title_from_ref",
                 "title_to_ref",
+                ],
+            "SQLite_Master": [
+                "type",
+                "name",
+                "table_name",
+                "root_page",
+                "sql",
                 ]
         }
 
@@ -111,9 +120,7 @@ class testMovieDbClasses(unittest.TestCase):
         unittest.TestCase.tearDown(self)
 
     def testDbClasses(self):
-        """
-        Verifies that the package defines the expected classes (one per table).
-        """
+        """Verifies that the package defines the expected classes (one per table)."""
         missingClasses = []
 
         self.logger.info("*** Checking the classes in the package...")
@@ -138,9 +145,7 @@ class testMovieDbClasses(unittest.TestCase):
         self.logger.info("Package check passed.")
 
     def testDbClassesColumns(self):
-        """
-        Verifies that the definitions of the db classes conform to the expectations.
-        """
+        """Verifies that the definitions of the db classes conform to the expectations."""
         self.logger.info("*** Verifying db classes definitions...")
 
         missingColumns = {}
@@ -149,7 +154,8 @@ class testMovieDbClasses(unittest.TestCase):
         # Check all the classes in the module
         allClasses = inspect.getmembers(movieDbClasses, inspect.isclass)
 
-        for clazz in [x[0] for x in allClasses if repr(x[1])[8:].startswith("movieDbClasses") and not repr(x[1])[8:].endswith("movieDbBaseClass'>")]:
+        # for all classes except SQLite_Mastr, which is a pseudo-table and will not work with alchemy.
+        for clazz in [x[0] for x in allClasses if repr(x[1]).find("SQLite_Master") == -1 and repr(x[1])[8:].startswith("movieDbClasses") and not repr(x[1])[8:].endswith("movieDbBaseClass'>")]:
             self.logger.info("Testing class %s", clazz)
 
             # 1. create one instance of that class
@@ -160,20 +166,24 @@ class testMovieDbClasses(unittest.TestCase):
             rec = self.session.query(cls).first()
             self.logger.info("\tQueried db")
 
-            # 3. isolate the name of this class
+            # 3. isolate the name of this class fromm the record
             typeRec = type(rec)
-            recName = repr(typeRec)[23:repr(typeRec).rindex("'")]
-            self.logger.info("\tFound class by name: %s", recName)
+            if typeRec != type(None):
+                recName = repr(typeRec)[23:repr(typeRec).rindex("'")]
+                self.logger.info("\tFound record of class by name: %s", recName)
 
-            # 4. get the list of its columns
-            allRecColumns = [x.name for x in rec.__table__.columns]
-            self.logger.info("\tGot all the columns")
+                # 4. get the list of its columns
+                allRecColumns = [x.name for x in rec.__table__.columns]
+                self.logger.info("\tGot all the columns")
 
-            # 5. compare that list with the gold record
-            expectedCols = self._expectedColumns[recName]
-            missingColumns[recName] = [x for x in expectedCols if x not in allRecColumns]
-            extraColumns[recName] = [x for x in allRecColumns if x not in expectedCols]
-            self.logger.info("\tCompared all columns")
+                # 5. compare that list with the gold record
+                expectedCols = self._expectedColumns[recName]
+                missingColumns[recName] = [x for x in expectedCols if x not in allRecColumns]
+                extraColumns[recName] = [x for x in allRecColumns if x not in expectedCols]
+                self.logger.info("\tCompared all columns")
+
+            else:
+                self.logger.info("\tNo record found for class: %s", clazz)
 
         # Final check to see if any column mismatch was found
         if (sum([ len(missingColumns[x]) for x in missingColumns ]) > 0 or \
@@ -186,33 +196,30 @@ class testMovieDbClasses(unittest.TestCase):
             self.logger.info("Columns check passed.")
 
     def testInsertSites(self):
-        """
-        Verifies the 1-to-many relationship between Locations and sites works.
-        """
+        """Verifies the 1-to-many relationship between Locations and sites works."""
         self.logger.info("Testing creation of Locations and Sites")
 
         self.logger.debug("\tCreating locations.")
         loc1 = Locations(name = self.util.getNewTestName() + "Poggibonsi", language = "toscano")
         loc2 = Locations(name = self.util.getNewTestName() + "Corleone", language = "siculo")
+        self.session.add(loc1)
+        self.session.add(loc2)
+        self.session.commit()
 
         self.logger.debug("\tCreating sites.")
         aSite1 = movieDbClasses.Sites(name = self.util.getNewTestName() + "sitePoggi",
                                      url = "example.com",
                                      title_xpath = "*",
-                                     active = 1)
+                                     active = 1,
+                                     locations_ref = loc1.id)
 
         aSite2 = movieDbClasses.Sites(name = self.util.getNewTestName() + "sitePoggi_2",
                                      url = "example.it",
                                      title_xpath = "!*",
-                                     active = 1)
-        self.logger.debug("\tAdding sites to loc 1.")
-        loc1.sites.append(aSite1)
-        loc1.sites.append(aSite2)
+                                     active = 0,
+                                     locations_ref = loc2.id)
 
-        self.session.add(loc1)
-        self.session.add(loc2)
-        self.session.commit()
-
+        self.logger.debug("\tAdding sites to db.")
         self.session.add(aSite1)
         self.session.add(aSite2)
         self.session.commit()
@@ -224,9 +231,7 @@ class testMovieDbClasses(unittest.TestCase):
         self.assertTrue(aSite2.id != None, "aSite2 should have been committed correctly and have a valid id.")
 
     def testInsertTitlesInLocations(self):
-        """
-        Verifies the 1-to-many relationship between Locations and sites works.
-        """
+        """Verifies the 1-to-many relationship between Locations and sites works."""
         self.logger.info("Testing creation of Locations and Titles(InLocation)")
 
         self.logger.debug("\tCreating locations.")

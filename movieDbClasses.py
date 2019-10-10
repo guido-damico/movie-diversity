@@ -7,13 +7,12 @@ SQLAlchemy classes for the MovieDiversity db.
 '''
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 from sqlalchemy import inspect
 from sqlalchemy.sql.schema import CheckConstraint
 
 Base = declarative_base()
 
-class movieDbBaseClass():
+class movieDbBaseClass(object):
     """
     Base class that captures common behaviors in this package. 
     """
@@ -40,7 +39,6 @@ class Locations(Base, movieDbBaseClass):
     id = Column(Integer, primary_key = True)
     name = Column(String(250))
     language = Column(String(250))
-    sites = relationship("Sites")
 
 class Sites(Base, movieDbBaseClass):
     """
@@ -88,7 +86,16 @@ class Translations(Base, movieDbBaseClass):
     __tablename__ = 'translations'
     id = Column(Integer, primary_key = True)
     lang_from = Column(String(250))
-    lang_to = Column(String(250))
     title_from_ref = Column(Integer, ForeignKey('titles.id'))
-    title_to_ref = Column(Integer, ForeignKey('titles.id'))
+    tmdb_id = Column(Integer, nullable = False)
 
+class SQLite_Master(Base):
+    """
+    Master table of the database.
+    """
+    __tablename__ = 'sqlite_master'
+    type = Column(String(250))
+    name = Column(String(250), primary_key = True)
+    table_name = Column(String(250))
+    root_page = Column(Integer)
+    sql = Column(String(512))

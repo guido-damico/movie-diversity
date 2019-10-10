@@ -32,11 +32,9 @@ CREATE TABLE shows (id integer PRIMARY KEY,
 
 CREATE TABLE translations (id integer PRIMARY KEY,
                            lang_from text,
-                           lang_to text,
                            title_from_ref integer,
-                           title_to_ref integer,
-                           FOREIGN KEY(title_from_ref) references titles(id),
-                           FOREIGN KEY(title_to_ref) references titles(id));
+                           tmdb_id integer,
+                           FOREIGN KEY(title_from_ref) references titles(id);
 
 --
 -- Seed data

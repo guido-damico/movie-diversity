@@ -60,39 +60,32 @@ The following python 3 packages must be installed and usable to have the applica
 There are few tests already in the `./tests` directory that you can run.
 A sample of the `testSources.py` run would be:
 ```
-python3 tests/testSources.py -v
-2017-06-01 10:43:48 - INFO - Logger initialized at level 20.
-testInsertShow (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
-2017-06-01 10:43:48 - INFO - Verifying db schema tables...
-2017-06-01 10:43:48 - INFO - Verification terminated and passed.
-2017-06-01 10:43:48 - INFO - Found 4 test record(s).
-2017-06-01 10:43:48 - INFO - Cleaning up 4 test record(s).
-ok
-testInsertTitle (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
-2017-06-01 10:43:48 - INFO - Verifying db schema tables...
-2017-06-01 10:43:48 - INFO - Verification terminated and passed.
-2017-06-01 10:43:48 - INFO - AttributeError thrown by the util as expected for NULL title.
-2017-06-01 10:43:48 - INFO - Found 1 test record(s).
-2017-06-01 10:43:48 - INFO - Cleaning up 1 test record(s).
-ok
-testPlacesNames (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
-2017-06-01 10:43:48 - INFO - Verifying db schema tables...
-2017-06-01 10:43:48 - INFO - Verification terminated and passed.
-2017-06-01 10:43:48 - INFO - Found 0 test record(s).
-ok
-testPlacesType (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
-2017-06-01 10:43:48 - INFO - Verifying db schema tables...
-2017-06-01 10:43:48 - INFO - Verification terminated and passed.
-2017-06-01 10:43:48 - INFO - Found 0 test record(s).
-ok
-testSeedData (__main__.testSource) ... 2017-06-01 10:43:48 - INFO - Source connected to db in '/home/guido/work/git/movie-diversity/movieDiversity.db'
-2017-06-01 10:43:48 - INFO - Verifying db schema tables...
-2017-06-01 10:43:48 - INFO - Verification terminated and passed.
-2017-06-01 10:43:48 - INFO - Found 0 test record(s).
-ok
+python3 -m unittest discover -v -b
+testGetTitleFromId (tests.testImdbRestClient.testMovieDbClasses) ... ok
+testSearchByTitle (tests.testImdbRestClient.testMovieDbClasses) ... ok
+testSimpleGet (tests.testImdbRestClient.testMovieDbClasses) ... ok
+testDbClasses (tests.testMovieDbClasses.testMovieDbClasses) ... ok
+testDbClassesColumns (tests.testMovieDbClasses.testMovieDbClasses) ... ok
+testInsertSites (tests.testMovieDbClasses.testMovieDbClasses) ... ok
+testInsertTitlesInLocations (tests.testMovieDbClasses.testMovieDbClasses) ... ok
+testGetMovieTitles (tests.testScraper.testScraper) ... ok
+testInsertShow (tests.testSources.testSource) ... ok
+testInsertTitleInLocation (tests.testSources.testSource) ... ok
+testPlacesNames (tests.testSources.testSource) ... ok
+testPlacesType (tests.testSources.testSource) ... ok
+testSchema (tests.testSources.testSource) ... ok
+testSeedData (tests.testSources.testSource) ... ok
+testInsertShow (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
+testInsertTitleInLocation (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
+testLocationsSitesData (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
+testPlacesNames (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
+testPlacesType (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
+testSchema (tests.testSourcesAlchemy.testSourceAlchemy)
+Verifies that the definitions of the db schema conforms to the expectations. ... ok
+testTitlesData (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
 
 ----------------------------------------------------------------------
-Ran 5 tests in 0.092s
+Ran 21 tests in 5.569s
 
 OK
 ```
