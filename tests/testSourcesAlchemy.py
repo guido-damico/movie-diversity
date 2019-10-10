@@ -61,9 +61,8 @@ class testSourceAlchemy(unittest.TestCase):
                    'translations':
                    ["id integer primary key",
                     "lang_from text",
-                    "lang_to text",
                     "title_from_ref integer",
-                    "title_to_ref integer"
+                    "tmdb_id integer"
                    ]
                   }
 

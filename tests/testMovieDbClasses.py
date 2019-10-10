@@ -160,20 +160,24 @@ class testMovieDbClasses(unittest.TestCase):
             rec = self.session.query(cls).first()
             self.logger.info("\tQueried db")
 
-            # 3. isolate the name of this class
+            # 3. isolate the name of this class fromm the record
             typeRec = type(rec)
-            recName = repr(typeRec)[23:repr(typeRec).rindex("'")]
-            self.logger.info("\tFound class by name: %s", recName)
+            if typeRec != type(None):
+                recName = repr(typeRec)[23:repr(typeRec).rindex("'")]
+                self.logger.info("\tFound record of class by name: %s", recName)
 
-            # 4. get the list of its columns
-            allRecColumns = [x.name for x in rec.__table__.columns]
-            self.logger.info("\tGot all the columns")
+                # 4. get the list of its columns
+                allRecColumns = [x.name for x in rec.__table__.columns]
+                self.logger.info("\tGot all the columns")
 
-            # 5. compare that list with the gold record
-            expectedCols = self._expectedColumns[recName]
-            missingColumns[recName] = [x for x in expectedCols if x not in allRecColumns]
-            extraColumns[recName] = [x for x in allRecColumns if x not in expectedCols]
-            self.logger.info("\tCompared all columns")
+                # 5. compare that list with the gold record
+                expectedCols = self._expectedColumns[recName]
+                missingColumns[recName] = [x for x in expectedCols if x not in allRecColumns]
+                extraColumns[recName] = [x for x in allRecColumns if x not in expectedCols]
+                self.logger.info("\tCompared all columns")
+
+            else:
+                self.logger.info("\tNo record found for class: %s", clazz)
 
         # Final check to see if any column mismatch was found
         if (sum([ len(missingColumns[x]) for x in missingColumns ]) > 0 or \
