@@ -19,8 +19,6 @@ class testTimdb(unittest.TestCase):
     logger = None
     tmdbRestClient = None
 
-    # _IMDB_API_KEY = "09ac37f03df193fc3b81b7f4c097e8e2"
-    # _FULL_TEST_URL = "https://api.themoviedb.org/3/movie/144?api_key=" + _IMDB_API_KEY + "&language=en-US"
     _MOVIE_ID = 144
     _MOVIE_TITLE = "Wings of Desire"
     _MOVIE_TITLE_ORIG = "Der Himmel über Berlin"

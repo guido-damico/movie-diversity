@@ -154,6 +154,7 @@ class testMovieDbClasses(unittest.TestCase):
         # Check all the classes in the module
         allClasses = inspect.getmembers(movieDbClasses, inspect.isclass)
 
+        # for all classes except SQLite_Mastr, which is a pseudo-table and will not work with alchemy.
         for clazz in [x[0] for x in allClasses if repr(x[1]).find("SQLite_Master") == -1 and repr(x[1])[8:].startswith("movieDbClasses") and not repr(x[1])[8:].endswith("movieDbBaseClass'>")]:
             self.logger.info("Testing class %s", clazz)
 

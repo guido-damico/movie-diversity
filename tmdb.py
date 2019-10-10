@@ -31,7 +31,7 @@ class tmdbRestClient(object):
 
     _TIMDB_API_URL = "https://api.themoviedb.org/3/"
     _TMDB_PROPERTIES_FILE = 'tmdb.properties'
-    _KEY_ARG = ""
+    _KEY_ARG = ""  # should be stored in the _TMDB_PROPERTIE_FILE file
     _LANG_ARG = "&language=en-US"
     _SITE_CONFIG = {}
 

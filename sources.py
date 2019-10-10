@@ -100,6 +100,13 @@ class Sources(object):
                                       logger = self.logger)
         self.util.checkDbDataTestNames()
 
+    def getAllTablesDefinitions(self):
+        """
+        Returns all the SQL DDL statements to create the tables, as stored in sqlite_master.
+        """
+        output = self.session.query(self.sqliteMasterClass).from_statement(text("SELECT name, sql FROM sqlite_master")).all()
+        return output
+
     def getAllLocations(self,
                         refresh = False):
         """
@@ -420,13 +427,6 @@ class Sources(object):
             newTranslationId = newTranslation.id
 
         return newTranslationId
-
-    def getAllTablesDefinitions(self):
-        """
-        Returns all the SQL DDL statements to create the tables, as stored in sqlite_master.
-        """
-        output = self.session.query(self.sqliteMasterClass).from_statement(text("SELECT name, sql FROM sqlite_master")).all()
-        return output
 
     def rollbackSession(self):
         """
