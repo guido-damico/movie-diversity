@@ -46,12 +46,14 @@ class testTimdb(unittest.TestCase):
         unittest.TestCase.tearDown(self)
 
     def testGetTitleFromId(self):
+        """Tests getting a movie from a known given ID."""
         self.logger.info("Looking up movie by Id : %s" % self._MOVIE_ID)
         resp = self.tmdbRestClient.getTitleById(self._MOVIE_ID)
         assert resp['title'] == self._MOVIE_TITLE, \
             "Expected title for movie %d to be '%s', got: %s" % (self._MOVIE_ID, self._MOVIE_TITLE, resp['title'])
 
     def testSearchByTitle(self):
+        """Tests searching a movie by a generic title in different ways."""
         self.logger.info("Searching movies by keyword : %s" % self._SEARCH_STRIING_1)
         resp = self.tmdbRestClient.searchByTitle(title = self._SEARCH_STRIING_1, language = "it")
         assert len(resp['results']) == 1, \

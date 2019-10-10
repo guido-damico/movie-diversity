@@ -54,6 +54,7 @@ b = False
         unittest.TestCase.tearDown(self)
 
     def testReadAFile(self):
+        """Tests reading a temporary .properties file."""
         nvp = self.reader.readPropertiesFile(self.tempPropFile.name)
         self.assertEqual(len(nvp), 5, "Expected 5 pairs, got %d" % (len(nvp)))
         self.assertEqual(nvp['Login'], "yes", "Login should be = yes")

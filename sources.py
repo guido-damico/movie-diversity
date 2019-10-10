@@ -1,70 +1,129 @@
 '''
-Created on May 5, 2017
+Created on March 3, 2019
 
 @author: Guido
 
 Source module for the MovieDiversity app.
 '''
 from pprint import pformat
-from contextlib import closing
 import logging
 import datetime
+
 import movieLogger
+import tests.utils
 from utils import stringUtils
 
-from utils import dbUtils as db
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy import event
+from sqlalchemy import func
+from sqlalchemy import text
+
+import movieDbClasses
+from movieDbClasses import Locations
+from movieDbClasses import Sites
+from movieDbClasses import Titles
+from movieDbClasses import TitlesInLocations
+from movieDbClasses import Shows
+from movieDbClasses import Translations
+from movieDbClasses import SQLite_Master
 
 class Sources(object):
     """
-        Implementation of the sources to be used with Scraper.
-        All db-level actions (towards sqlite) are defined here.
-
+        This class exposes commodity methods to query the db and get structured data back.
+        It uses internally SQLAlchemy, but it hides all the SQLAlchemy's classes from the user,
+        all methods return plan dictionaries, hiding the db implementation from the callers.
+        
         It depends on movieLogger.MovieLogger.
     """
 
     logger = None
-    _conn = None
-    _locations = []
-    _data = []
+    session = None
 
-    # sqlite db location
-    _sqliteFileName = './movieDiversity.db'
+    # locally cached data containers
+    _locations = []
+    _sites = []
+
+    # sqlite db file
+    _dbName = '/home/guido/work/git/movie-diversity/movieDiversity.db'
+    _dbConnectString = 'sqlite:///'
+
+    # classes to be used by SQLAlchemy for query and manipulation
+    locationClass = None
+    sitesClass = None
+    titlesClass = None
+    titlesInLocationsClass = None
+    showsClass = None
+    translationsClass = None
+    sqliteMasterClass = None
 
     # auto-commit?
-    _isolationLevel = None
+    # _isolationLevel = None
 
-    def __init__(self, dbfile = _sqliteFileName):
+    def __init__(self, dbfile = _dbName):
         """
             Gets a local copy of the logger.
             Connects to the sqlite data db specified by "dbfile" and
-            verifies that the schema has been defined correctly.
-
-            The MovieDiversity.sql file contains a valid seeding of the db.
+            verifies that the schema is clean.
         """
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
 
-        self._conn = db.connect(dbfile = dbfile)
+        # Create the SQLAlchemy connection
+        self._dbConnectString = self._dbConnectString + dbfile
+        dbEngine = create_engine(self._dbConnectString)
 
-        self.logger.info("Source connected to db in '%s'", dbfile)
+        # Enforce FK constraints
+        def _enforceFKContraintsOnConnect(dbapi_conn, con_record):
+            dbapi_conn.execute('PRAGMA foreign_keys=ON')
+
+        event.listen(dbEngine, 'connect', _enforceFKContraintsOnConnect)
+
+        movieDbClasses.Base.metadata.bind = dbEngine
+        DBSession = sessionmaker()
+        DBSession.bind = dbEngine
+        self.session = DBSession()
+
+        # store copy of the db wrapper classes
+        self.locationClass = getattr(movieDbClasses, "Locations")
+        self.sitesClass = getattr(movieDbClasses, "Sites")
+        self.titlesClass = getattr(movieDbClasses, "Titles")
+        self.titlesInLocationsClass = getattr(movieDbClasses, "TitlesInLocations")
+        self.showsClass = getattr(movieDbClasses, "Shows")
+        self.translationClass = getattr(movieDbClasses, "Translations")
+        self.sqliteMasterClass = getattr(movieDbClasses, "SQLite_Master")
+
+        self.logger.debug("Created wrapper classes container instances")
+
+        # for direct SQL manipulation of the db: have the util class inited correctly
+        # and check for data cleanliness
+        self.util = tests.utils.Utils(dbfile = self._dbName,
+                                      logger = self.logger)
+        self.util.checkDbDataTestNames()
 
     def getAllLocations(self,
                         refresh = False):
-        """Returns all the locations known to the class up to this point.
+        """
+        Returns all the locations known to the class up to this point.
+        Return type is a list of Locations class instances.
+
         If "Refresh" is set to True, or if there are not locations in the cache,
         performs a new query to the db to get fresh data.
         """
         if refresh or len(self._locations) == 0:
-            with (closing(db.cursor(self._conn))) as cur:
-                cur.execute('SELECT id, name FROM locations;')
-                self._locations = cur.fetchall()
-                self._locations = [{'id': x['id'], 'name': x['name']} for x in self._locations]
+
+            # query
+            rec = self.session.query(self.locationClass).all()
+            self.logger.debug("Queried db for locations")
+
+            self._locations = rec
 
         return self._locations
 
-    def getLocationData(self,
-                        locationName = "",
-                        refresh = False):
-        """Given a location name, it returns all the currently known data for that
+    def getLocationSitesData(self,
+                             locationName = "",
+                             refresh = False):
+        """
+        Given a location name, it returns all the currently known data for that
         location, in the form of a list of dictionaries.
 
         If "Refresh" is set to True, or if there is no data in the cache,
@@ -74,47 +133,106 @@ class Sources(object):
         information about the URL, title_xpath, and Active status of the sites
         connected to the given location.
         """
-        if refresh or len(self._data) == 0:
-            self.logger.debug("Refreshing data for %s.", locationName)
+        if refresh or len(self._sites) == 0:
+            self.logger.debug("Refreshing data for locations and their sites.")
 
-            with (closing(db.cursor(self._conn))) as cur:
-                cur.execute('SELECT s.id, s.name, url, title_xpath, active, locations_ref, l.name location_name ' + \
-                            'FROM locations l, sites s ' + \
-                            'WHERE  s.locations_ref = l.id;')
-                allData = cur.fetchall()
+            # get all sites and their locations
+            allData = self.session.query(self.locationClass, self.sitesClass) \
+                                .filter(Sites.locations_ref == Locations.id) \
+                                .all()
+            self.logger.debug("Queried db for join locations and sites")
 
-                for r in allData:
-                    self._data.append({k: r[k] for k in r.keys()})
+            # Build the dictionary in output
+            for rec in allData:
+                self._sites.append({'id': rec.Sites.id,
+                                    'name': rec.Sites.name,
+                                    'url': rec.Sites.url,
+                                    'title_xpath': rec.Sites.title_xpath,
+                                    'active': rec.Sites.active,
+                                    'locations_ref': rec.Sites.locations_ref,
+                                    'location_name': rec.Locations.name})
 
-        return [x for x in self._data if x['location_name'] == locationName]
+        return [x for x in self._sites if x['location_name'] == locationName]
 
-    def getAllDbTitles(self):
-        """Returns a list of dictionaries for all titles in the db.
-
-        Valid keys:
-            tid : titles(id)
-            tilid : titles_in_locations(id)
-            title : titles(title)
-            locations_ref : locations(id)
+    def getAllTitles(self):
         """
-        with (closing(db.cursor(self._conn))) as cur:
-            cur.execute("""SELECT t.id tid,
-                                  t.title title,
-                                  l.id locations_ref,
-                                  til.id tilid
-                           FROM titles t, locations l, titles_in_locations til
-                           WHERE t.id = til.titles_ref
-                           AND l.id = til.locations_ref;
-                        """)
+        Returns a list of titles in the db.
+        """
+        # query
+        recs = self.session.query(self.titlesClass).all()
+        self.logger.debug("Queried db for titles")
 
-            rows = cur.fetchall()
-            output = [{'tid': r['tid'], 'tilid': r['tilid'], 'title': r['title'], 'locations_ref': r['locations_ref']} \
-                      for r in rows]
+        return recs
 
-            return output
+    def getAllTitlesAndLocations(self):
+        """
+        Returns a list of dictionaries with titles is and their locations_ref.
+        """
+        # query
+        recs = self.session.query(self.titlesClass, self.locationClass, self.titlesInLocationsClass) \
+                           .filter(Titles.id == TitlesInLocations.titles_ref) \
+                           .filter(TitlesInLocations.locations_ref == Locations.id) \
+                           .all()
+        self.logger.debug("Queried db for titles")
 
-    def insertTitleInLocation(self, title = None, locationId = None):
-        """Inserts a new title for the given location in the db.
+        output = []
+
+        # Build the dictionary in output
+        for rec in recs:
+            output.append({'id': rec.Titles.id,
+                           'title': rec.Titles.title,
+                           'locations_ref': rec.Locations.id,
+                           'tilid': rec.TitlesInLocations.id})
+
+        return output
+
+    def getAllTitlesInLocation(self, locationsId = None):
+        """
+        Given a locations Id, returns a list of dictionaries representing the titles.
+
+        Output structure:
+            [{'tid': title Id,
+              'tilid': titles_in_locaitons id,
+              'title': title string,
+              'first_show': date of the first show of this title in this location,
+              'last_show': date of the most recent show of this title in this location,
+              'locations_ref': id of the location}]
+        """
+        output = []
+
+        # query
+        recs = self.session.query(self.titlesClass.id.label("titles_id"), \
+                                  self.titlesClass.title, \
+                                  self.locationClass.id.label("locations_id"), \
+                                  self.locationClass.language.label("language"), \
+                                  self.titlesInLocationsClass.id.label("titles_in_locations_id"), \
+                                  func.min(self.showsClass.date).label("first_show"), \
+                                  func.max(self.showsClass.date).label("last_show")) \
+                           .filter(Titles.id == TitlesInLocations.titles_ref) \
+                           .filter(TitlesInLocations.locations_ref == Locations.id) \
+                           .filter(TitlesInLocations.locations_ref == locationsId) \
+                           .filter(Shows.titles_in_locations_ref == TitlesInLocations.id) \
+                           .group_by(Titles.id) \
+                           .group_by(TitlesInLocations.id) \
+                           .order_by(Titles.title) \
+                           .all()
+
+        # Build the dictionary in output
+        self.logger.debug("Got: %d titles" % len(recs))
+        output = [{'tid': rec.titles_id, \
+                   'tilid': rec.titles_in_locations_id, \
+                   'title': rec.title, \
+                   'first_show': rec.first_show, \
+                   'last_show': rec.last_show, \
+                   'locations_ref': rec.locations_id, \
+                   'language': rec.language} \
+                  for rec in recs]
+
+        return output
+
+    def insertTitleInLocation(self, aTitle = None, locationId = None):
+        """
+        Inserts a new title for the given location in the db.
         If the same title exists, but in a different location, a new
         record is created in titles_in_locations linking the existing title
         with the new location.
@@ -123,66 +241,67 @@ class Sources(object):
 
         Returns the titles_in_locations record primary key (id).
         """
+
         newTitleId = None
         newTitleInLocationId = None
 
-        assert title != None and title != "", \
+        assert aTitle != None and aTitle != "", \
             "Attempted to insert a NULL title!"
         assert locationId != None and isinstance(locationId, int), \
             "Attempted to insert a title with an invalid location (%s)!" % locationId
 
-        with (closing(db.cursor(self._conn))) as cur:
-            dbTitles = self.getAllDbTitles()
+        dbTitles = self.getAllTitlesAndLocations()
+        # check whether the title is similar to one already in for this location
+        similar = [x for x in dbTitles if x['locations_ref'] == locationId \
+                                        and (stringUtils.isSimilar(aTitle, x['title']))
+                  ]
 
-            # check whether the title is similar to one already in for this location
-            similar = [x for x in dbTitles if x['locations_ref'] == locationId \
-                                           and (stringUtils.isSimilar(title, x['title']))
+        if len(similar) == 1:
+            # found a similar title already in
+            self.logger.debug("Found title '%s', similar to '%s' already in the db: using db version.", \
+                             aTitle, similar[0]['title'])
+            newTitleId = similar[0]['id']
+            newTitleInLocationId = similar[0]['tilid']
+
+        elif len(similar) > 1:
+            # data inconsistency! Found many similar titles, can't proceed: log an error and discard this record
+            self.logger.error("Cannot insert title '%s', found too many similar ones already in the db:\n%s", aTitle, pformat(similar))
+
+        else:
+            # this title is not in the given location: check all other locations
+            similar = [x for x in dbTitles if x['locations_ref'] != locationId \
+                                      and (stringUtils.isSimilar(aTitle, x['title']))
                       ]
-
-            if len(similar) == 1:
-                # found a similar title already in
-                self.logger.debug("Found title '%s', similar to '%s' already in the db: using db version.", \
-                                  title, similar[0]['title'])
-                newTitleId = similar[0]['tid']
-                newTitleInLocationId = similar[0]['tilid']
-
-            elif len(similar) > 1:
-                # data inconsistency! Found many similar titles, can't proceed: log an error and discard this record
-                self.logger.error("Cannot insert title '%s', found too many similar ones already in the db:\n%s", title, pformat(similar))
+            if len(similar) >= 1:
+                # found a similar title in a different location
+                self.logger.debug("Found title '%s', similar to '%s' already in the db " + \
+                                 "but in a different location (%d): adding current location.", \
+                                 aTitle, similar[0]['title'], locationId)
+                newTitleInLocation = TitlesInLocations(titles_ref = similar[0]['id'], locations_ref = locationId)
+                self.session.add(newTitleInLocation)
+                newTitleInLocationId = self.session.commit()
+                newTitleInLocationId = newTitleInLocation.id
+                newTitleId = similar[0]['id']
             else:
-                # this title is not in the given location: check all other locations
-                similar = [x for x in dbTitles if x['locations_ref'] != locationId \
-                                           and (stringUtils.isSimilar(title, x['title']))
-                          ]
+                # Bona fide new title: insert the title for this location
+                self.logger.debug("Brand new title '%s', adding it to titles and to location %d.", \
+                                 aTitle, locationId)
+                titleRec = self.titlesClass(title = aTitle)
+                self.session.add(titleRec)
+                self.session.commit()
+                newTitleId = titleRec.id
 
-                if len(similar) >= 1:
-                    # found a similar title in a different location
-                    self.logger.debug("Found title '%s', similar to '%s' already in the db " + \
-                                      "but in a different location (%d): adding current location.", \
-                                      title, similar[0]['title'], locationId)
+                # and then insert it in the TIL table
+                titleInLocRec = self.titlesInLocationsClass(titles_ref = newTitleId, locations_ref = locationId)
+                self.session.add(titleInLocRec)
+                self.session.commit()
+                newTitleInLocationId = titleInLocRec.id
 
-                    cur.execute("INSERT INTO titles_in_locations (titles_ref, locations_ref) VALUES (?, ?);", \
-                                (similar[0]['tid'], locationId))
-                    newTitleInLocationId = cur.lastrowid
-                    newTitleId = similar[0]['tid']
-
-                else:
-                    # Bona fide new title: insert the title for this location
-                    self.logger.debug("Brand new title '%s', adding it to titles and to location %d.", \
-                                      title, locationId)
-
-                    cur.execute("INSERT INTO titles(title) VALUES (?);", (title,))
-                    newTitleId = cur.lastrowid
-
-                    # and then insert it in the TIL table
-                    cur.execute("INSERT INTO titles_in_locations (titles_ref, locations_ref) VALUES (?, ?);", \
-                                (newTitleId, locationId))
-                    newTitleInLocationId = cur.lastrowid
-
-            return (newTitleId, newTitleInLocationId)
+        return (newTitleId, newTitleInLocationId)
 
     def insertShow(self, titlesRef = None, locationsRef = None, date = None):
-        """Inserts a new show for the given titles(id) on the specified date.
+        """
+        Inserts a new show for the given titles(id) on the specified date.
         If the same (titles_ref , date) tuple is already there, this is a no-op.
 
         If date is None, then today's date is used.
@@ -200,68 +319,118 @@ class Sources(object):
         if date is None:
             date = currDate
 
-        with (closing(db.cursor(self._conn))) as cur:
-            cur.execute("SELECT id FROM titles_in_locations WHERE titles_ref = ? and locations_ref = ?;", (titlesRef, locationsRef))
-            tilId = cur.fetchone()
+        # find this title in this location
+        titleInLoc_recs = self.session.query(self.titlesInLocationsClass) \
+                         .filter(TitlesInLocations.titles_ref == titlesRef) \
+                         .filter(TitlesInLocations.locations_ref == locationsRef) \
+                         .all()
 
-            # if this title was not shown before in this location, add it to the titles_in_locations table
-            if tilId is None:
-                cur.execute("INSERT INTO titles_in_locations(titles_ref, locations_ref) VALUES (?, ?);", (titlesRef, locationsRef))
-                tilId = cur.lastrowid
-            else:
-                tilId = tilId['id']
+        # if this title was not shown before in this location, add it to the titles_in_locations table
+        if len(titleInLoc_recs) == 0:
+            newTitleInLocation = TitlesInLocations(titles_ref = titlesRef, locations_ref = locationsRef)
+            self.session.add(newTitleInLocation)
+            newTitleInLocationId = self.session.commit()
+            newTitleInLocationId = newTitleInLocation.id
+        else:
+            newTitleInLocationId = titleInLoc_recs[0].id
 
-            # check if there has been already a show in this location for this date
-            cur.execute("SELECT id FROM shows WHERE date = ? AND titles_in_locations_ref = ?;", (date, tilId))
-            showId = cur.fetchone()
+        # check if there has been already a show in this location for this date
+        shows_recs = self.session.query(self.showsClass) \
+                    .filter(Shows.date == date) \
+                    .filter(Shows.titles_in_locations_ref == newTitleInLocationId) \
+                    .all()
 
-            if showId != None:
-                # show was already recorded
-                newId = showId['id']
-            else:
-                # new show: insert new record
-                cur.execute("INSERT INTO shows(date, titles_in_locations_ref) VALUES (?, ?);", (date, tilId))
-                newId = cur.lastrowid
+        # if there was one, record it, if not insert it on today's date
+        if len(shows_recs) == 0:
+            newShow = Shows(date = date, titles_in_locations_ref = newTitleInLocationId)
+            self.session.add(newShow)
+            newShowId = self.session.commit()
+            newShowId = newShow.id
+        else:
+            newShowId = shows_recs[0].id
 
-            return newId
+        return newShowId
 
-    def getAllTitlesInLocation(self, locationsId = None):
+    def getAllTranslationsAlreadyIn(self, titlesRef = None, lang_from = None):
         """
-        Given a locations Id, returns a list of dictionaries representing the titles.
-
-        Output structure:
-            [{'tid': title Id,
-              'tilid': titles_in_locaitons id,
-              'title': title string,
-              'first_show': date of the first show of this title in this location,
-              'last_show': date of the most recent show of this title in this location,
-              'locations_ref': id of the location}]
+            Returns all the translations for this title already in the table. 
         """
-        with (closing(db.cursor(self._conn))) as cur:
-            cur.execute("""SELECT t.id tid,
-                                  t.title title,
-                                  til.id tilid,
-                                  min(s.date) first_show,
-                                  max(s.date) last_Show,
-                                  locations_ref
-                           FROM titles t,
-                                locations l,
-                                titles_in_locations til,
-                                shows s
-                           WHERE t.id = til.titles_ref
-                           AND s.titles_in_locations_ref = til.id
-                           AND til.locations_ref = ?
-                           GROUP BY t.id, t.title, til.id
-                           ORDER BY t.title;
-                        """, (locationsId,))
+        # find any other translation for this title
+        translation_recs = self.session.query(self.translationClass) \
+                         .filter(Translations.title_from_ref == titlesRef) \
+                         .all()
 
-            rows = cur.fetchall()
-            output = [{'tid': r['tid'], \
-                       'tilid': r['tilid'], \
-                       'title': r['title'], \
-                       'first_show': r['first_show'], \
-                       'last_show': r['last_show'], \
-                       'locations_ref': r['locations_ref']} \
-                      for r in rows]
+        # if there is a record with exactly the same translation, return just that one
+        if lang_from in set([x.lang_from for x in translation_recs]):
+            translation_recs = [x for x in translation_recs if x.lang_from == lang_from]
+
+        # Build the dictionary in output
+        output = [{'id': rec.id, \
+                   'title_from_ref': rec.title_from_ref, \
+                   'lang_from': rec.lang_from, \
+                   'tmdb_id': rec.tmdb_id} \
+                  for rec in translation_recs]
 
         return output
+
+    def insertTranslation(self, titlesRef = None, lang_from = None, tmdb_id = None):
+        """
+        Links a new translation for the given title_ref in the specified language for the movie with that tmdb_id.
+        If the same (titles_ref , lang, tmdb_d) tuple is already there, this is a no-op.
+
+        If date is None, then today's date is used.
+        The format for the date string should be '%Y-%m-%d'.
+
+        Returns the show primary key.
+        """
+        assert titlesRef != None, "Cannot insert a translation with a null titlesRef!"
+        assert isinstance(titlesRef, int), "Cannot insert a translation with a titlesRef of type %s, should be an int!" % (type(titlesRef))
+        assert tmdb_id != None, "Cannot insert a show with a null tmdb id"
+        assert isinstance(tmdb_id, int), "Cannot insert a show with a tmdb id of type %s, should be an int!" % (type(tmdb_id))
+
+        # decision flag
+        addTranslation = False
+
+        # return value
+        newTranslationId = None
+
+        # get any other translation for this title
+        translation_recs = self.getAllTranslationsAlreadyIn(titlesRef, lang_from)
+
+        if len(translation_recs) == 0:
+            # brand new translation
+            addTranslation = True
+
+        else:
+            # one or more translations here already: look for the same language
+            sameLanguage = [x for x in translation_recs if x['lang_from'] == lang_from]
+
+            if len(sameLanguage) == 0:
+                # new translation for a known title: add it
+                addTranslation = True
+
+            elif len(sameLanguage) == 1:
+                # translation was already in: return it
+                newTranslationId = sameLanguage[0]['id']
+
+        if addTranslation:
+            newTranslation = Translations(title_from_ref = titlesRef, lang_from = lang_from, tmdb_id = tmdb_id)
+            self.session.add(newTranslation)
+            newTranslationId = self.session.commit()
+            newTranslationId = newTranslation.id
+
+        return newTranslationId
+
+    def getAllTablesDefinitions(self):
+        """
+        Returns all the SQL DDL statements to create the tables, as stored in sqlite_master.
+        """
+        output = self.session.query(self.sqliteMasterClass).from_statement(text("SELECT name, sql FROM sqlite_master")).all()
+        return output
+
+    def rollbackSession(self):
+        """
+        In case of an exception during a transaction, the user needs to be able to clean up the session,
+        by rolling it back before being able to initiate another one.
+        """
+        self.session.rollback()

@@ -10,7 +10,7 @@ import argparse
 from pprint import pformat
 import requests
 from lxml import html
-import sourcesAlchemy
+import sources
 import movieLogger
 from utils import stringUtils
 
@@ -29,7 +29,7 @@ class Scraper(object):
         Builds a local instance of the Sources class and
         one of the MovieLogger engine.
         """
-        self._source = sourcesAlchemy.SourcesAlchemy(dbfile = dbfile)
+        self._source = sources.Sources(dbfile = dbfile)
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
 
         self.logger.info("Scraper instance inited.")

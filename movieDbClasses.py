@@ -7,7 +7,6 @@ SQLAlchemy classes for the MovieDiversity db.
 '''
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 from sqlalchemy import inspect
 from sqlalchemy.sql.schema import CheckConstraint
 
@@ -91,3 +90,13 @@ class Translations(Base, movieDbBaseClass):
     title_from_ref = Column(Integer, ForeignKey('titles.id'))
     tmdb_id = Column(Integer, nullable = False)
 
+class SQLite_Master(Base):
+    """
+    Master table of the database.
+    """
+    __tablename__ = 'sqlite_master'
+    type = Column(String(250))
+    name = Column(String(250), primary_key = True)
+    table_name = Column(String(250))
+    root_page = Column(Integer)
+    sql = Column(String(512))
