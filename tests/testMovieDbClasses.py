@@ -78,9 +78,8 @@ class testMovieDbClasses(unittest.TestCase):
             "Translations": [
                 "id",
                 "lang_from",
-                "lang_to",
                 "title_from_ref",
-                "title_to_ref",
+                "tmdb_id",
                 ],
             "SQLite_Master": [
                 "type",

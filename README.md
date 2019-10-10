@@ -56,38 +56,49 @@ The following python 3 packages must be installed and usable to have the applica
 - contextlib
 - sqlalchemy
 
+For the translations data I rely on the excellent service provided by The Movie Database (TMDb)
+at https://www.themoviedb.org/en.
+
+## Disclaimer
+This product uses the TMDb API but is not endorsed or certified by TMDb.
+
 # Tests
 There are few tests already in the `./tests` directory that you can run.
-A sample of the `testSources.py` run would be:
+A sample of run should yield:
 ```
-python3 -m unittest discover -v -b
-testGetTitleFromId (tests.testImdbRestClient.testMovieDbClasses) ... ok
-testSearchByTitle (tests.testImdbRestClient.testMovieDbClasses) ... ok
-testSimpleGet (tests.testImdbRestClient.testMovieDbClasses) ... ok
-testDbClasses (tests.testMovieDbClasses.testMovieDbClasses) ... ok
-testDbClassesColumns (tests.testMovieDbClasses.testMovieDbClasses) ... ok
-testInsertSites (tests.testMovieDbClasses.testMovieDbClasses) ... ok
-testInsertTitlesInLocations (tests.testMovieDbClasses.testMovieDbClasses) ... ok
+$ python3 -m unittest discover -v -b
+testDbClasses (tests.testMovieDbClasses.testMovieDbClasses)
+Verifies that the package defines the expected classes (one per table). ... ok
+testDbClassesColumns (tests.testMovieDbClasses.testMovieDbClasses)
+Verifies that the definitions of the db classes conform to the expectations. ... ok
+testInsertSites (tests.testMovieDbClasses.testMovieDbClasses)
+Verifies the 1-to-many relationship between Locations and sites works. ... ok
+testInsertTitlesInLocations (tests.testMovieDbClasses.testMovieDbClasses)
+Verifies the 1-to-many relationship between Locations and sites works. ... ok
+testReadAFile (tests.testPropertiesFileReader.testPropertiesReader)
+Tests reading a temporary .properties file. ... ok
 testGetMovieTitles (tests.testScraper.testScraper) ... ok
-testInsertShow (tests.testSources.testSource) ... ok
-testInsertTitleInLocation (tests.testSources.testSource) ... ok
-testPlacesNames (tests.testSources.testSource) ... ok
-testPlacesType (tests.testSources.testSource) ... ok
-testSchema (tests.testSources.testSource) ... ok
-testSeedData (tests.testSources.testSource) ... ok
-testInsertShow (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
-testInsertTitleInLocation (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
-testLocationsSitesData (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
-testPlacesNames (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
-testPlacesType (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
-testSchema (tests.testSourcesAlchemy.testSourceAlchemy)
+testInsertShow (tests.testSources.testSource)
+Tests inserting a show with a test title in a location. ... ok
+testInsertTitleInLocation (tests.testSources.testSource)
+Tests inserting a test title in a location. ... ok
+testLocationsSitesData (tests.testSources.testSource)
+Tests the locations and sites data. ... ok
+testPlacesNames (tests.testSources.testSource)
+Tests the places names data. ... ok
+testPlacesType (tests.testSources.testSource)
+Tests the places metadata. ... ok
+testSchema (tests.testSources.testSource)
 Verifies that the definitions of the db schema conforms to the expectations. ... ok
-testTitlesData (tests.testSourcesAlchemy.testSourceAlchemy) ... ok
+testTitlesData (tests.testSources.testSource)
+Tests the getAllTitles. ... ok
+testGetTitleFromId (tests.testTimdbRestClient.testTimdb)
+Tests getting a movie from a known given ID. ... ok
+testSearchByTitle (tests.testTimdbRestClient.testTimdb)
+Tests searching a movie by a generic title in different ways. ... ok
 
 ----------------------------------------------------------------------
-Ran 21 tests in 5.569s
+Ran 15 tests in 11.450s
 
 OK
 ```
-
-These are not yet a full regression suite...
