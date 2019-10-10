@@ -82,8 +82,8 @@ class TranslationMatcher(object):
                     elif check == -1:
                         stats['not found'] += 1
 
-        self.logger.info("End run:\n\t%4d new translations\n\t%4d existing\n\t%4d ambiguous\n\t%4d not found" %
-                        (stats['new'], stats['existing'], stats['ambiguous'], stats['not found']))
+        self.logger.info("End run:\n\t{new:5} new translations\n\t{existing:5} existing\n\t{ambiguous:5} ambiguous\n\t{not found:5} not found"
+                        .format_map(stats))
 
     def insertTitleAlreadyTranslated(self, aTitleInLoc = None, theLanguage = None):
         """
