@@ -1,0 +1,23 @@
+# Exclude compiled files
+*.pyc
+/__pycache__
+
+# Exclude the Eclipse metadata
+.project
+.pydevproject
+
+# Db do not go in Git
+*.db
+
+# No test resutls
+/test-*
+
+# No local properties file
+tmdb.properties
+
+# No logs or backups either
+*.log
+/backup
+
+# No texts
+*.txt
