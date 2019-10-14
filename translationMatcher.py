@@ -18,7 +18,7 @@ class TranslationMatcher(object):
     """
     Module which will match a title with its translations in the db.
     """
-    source = None
+    sources = None
     tmdbClient = None
     allTitles = None
     logger = None
@@ -28,7 +28,7 @@ class TranslationMatcher(object):
         Builds a local instance of the Sources class and
         one of the MovieLogger engine.
         """
-        self.source = sources.Sources(dbfile = dbfile)
+        self.sources = sources.Sources(dbfile = dbfile)
         self.logger = logging.getLogger(movieLogger.MovieLoggger.LOGGER_NAME)
 
         self.tmdbClient = tmdb.tmdbRestClient()
@@ -48,11 +48,11 @@ class TranslationMatcher(object):
                 }
 
         # build a list/map of all titles and their location
-        locations = self.source.getAllLocations(False)
+        locations = self.sources.getAllLocations(False)
         for loc in locations:
+            self.logger.info("Looking at %s." % (loc.name))
 
-            titlesInLoc = self.source.getAllTitlesInLocation(loc.id)
-            self.logger.info("Found %d titles in %s." % (len(titlesInLoc), loc.name))
+            titlesInLoc = self.sources.getNonTranslatedTitlesInLocation(loc.id)
 
             # for each title:
             for aTitleInLoc in titlesInLoc:
@@ -64,7 +64,7 @@ class TranslationMatcher(object):
                 # LOCAL CHECKS:
                 # verify if this title and language are already in, insert it if needed,
                 # updates the stats accordingly
-                check = self.insertTitleAlreadyTranslated(aTitleInLoc = aTitleInLoc, theLanguage = loc.language)
+                check = self.cheeckLocallyAndInsertTitle(aTitleInLoc = aTitleInLoc, theLanguage = loc.language)
                 if check == 0:
                     stats['existing'] += 1
                 elif check == 1:
@@ -74,7 +74,7 @@ class TranslationMatcher(object):
                 # TMDB REMOTE CHECKS:
                 # new title, look it up on imdb
                 else:
-                    check = self.insertTrasnlationFromTimdb(aTitleInLoc = aTitleInLoc, theLanguage = loc.language)
+                    check = self.checkTMBDAndInsertTitle(aTitleInLoc = aTitleInLoc, theLanguage = loc.language)
                     if check == 0:
                         stats['ambiguous'] += 1
                     elif check == 1:
@@ -85,7 +85,7 @@ class TranslationMatcher(object):
         self.logger.info("End run:\n\t{new:5} new translations\n\t{existing:5} existing\n\t{ambiguous:5} ambiguous\n\t{not found:5} not found"
                         .format_map(stats))
 
-    def insertTitleAlreadyTranslated(self, aTitleInLoc = None, theLanguage = None):
+    def cheeckLocallyAndInsertTitle(self, aTitleInLoc = None, theLanguage = None):
         """
         Check if the title was already translated in the current db and if it was already
         here but with a different language, inserts it in.
@@ -95,8 +95,8 @@ class TranslationMatcher(object):
             -1 if this title was not found in the local db
         """
         output = -1
-        knownTranslations = self.source.getAllTranslationsAlreadyIn(aTitleInLoc['tid'],
-                                                            aTitleInLoc['language'])
+        knownTranslations = self.sources.getAllTranslationsAlreadyIn(aTitleInLoc['tid'],
+                                                                     aTitleInLoc['language'])
         if len(knownTranslations) > 0:
             if len(knownTranslations) == 1:
                 # translation already there: move on
@@ -116,15 +116,14 @@ class TranslationMatcher(object):
 
         return output
 
-    def insertTrasnlationFromTimdb(self, aTitleInLoc = None, theLanguage = None):
+    def checkTMBDAndInsertTitle(self, aTitleInLoc = None, theLanguage = None):
         """
         Check if the title has a unique translation found in TIMDB, if so inserts it
         Returns:
-            -1 if this translation is not found in TIMDB at all
-             0 if this title has ambiguous translations (more than one fits)
-            +1 if this title has one unique translation in TIMDB
+            -1 if this translation is not found in TIMDB at all (no insert performed)
+             0 if this title has ambiguous translations (more than one fits, no inserts)
+            +1 if this title has one unique translation in TIMDB and has been inserted
         """
-        output = -1
 
         # get the info from tmdb
         movieRec = self.tmdbClient.searchByTitle(aTitleInLoc['title'], theLanguage)
@@ -134,6 +133,7 @@ class TranslationMatcher(object):
         if len(movieRec['results']) == 0:
             # unknown title just log it
             self.logger.warn("No results found at all for \"%s\" in %s!" % (aTitleInLoc['title'], theLanguage))
+            output = -1
 
         elif len(movieRec['results']) == 1:
             # match found
@@ -167,8 +167,11 @@ class TranslationMatcher(object):
                     output = 1
                 else:
                     # totally ambiguous match: too many exact matches - log and move on
+                    for r in exactMatch:
+                        if "release_date" not in r.keys():
+                            r['release_date'] = ''
                     self.logger.warning("Too many exact matches: ambiguous title (%s) yielded:\n%s" % \
-                                    (aTitleInLoc['title'], pformat([(t['title'], t['original_language']) for t in exactMatch])))
+                                    (aTitleInLoc['title'], pformat([(t['title'], t['original_language'], t['release_date']) for t in exactMatch])))
                     output = 0
 
             else:
@@ -179,7 +182,6 @@ class TranslationMatcher(object):
                                        originalTitle = exactMatch[0]['original_title'],
                                        originalLanguage = exactMatch[0]['original_language'])
                 output = 1
-                self.logger.info("Title \"%s\" in %s was originally \"%s\" in %s" % (aTitleInLoc['title'], theLanguage, exactMatch[0]['original_title'], exactMatch[0]['original_language']))
 
         return output
 
@@ -189,7 +191,7 @@ class TranslationMatcher(object):
         with id = tmdbId in TMDB for the language titleLanguage. 
         """
         self.logger.info("Title \"%s\" in %s was originally \"%s\" in %s (%s)" % (titleRec['title'], titleLanguage, originalTitle, originalLanguage, tmdbId))
-        self.source.insertTranslation(titlesRef = titleRec['tid'], lang_from = titleLanguage, tmdb_id = tmdbId)
+        self.sources.insertTranslation(titlesRef = titleRec['tid'], lang_from = titleLanguage, tmdb_id = tmdbId)
 
 # ##
 #

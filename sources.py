@@ -237,6 +237,58 @@ class Sources(object):
 
         return output
 
+    def getNonTranslatedTitlesInLocation(self, locationsId = None):
+        """
+        Given a locations Id, returns a list of dictionaries representing the titles
+        for which there is not yet a translation.
+
+        Output structure:
+            [{'tid': title Id,
+              'tilid': titles_in_locaitons id,
+              'title': title string,
+              'first_show': date of the first show of this title in this location,
+              'last_show': date of the most recent show of this title in this location,
+              'locations_ref': id of the location}]
+        """
+        output = []
+
+        # query only the titles not yet translated
+        translatedTitles = self.session.query(self.translationClass.title_from_ref) \
+                                       .distinct() \
+                                       .all()
+        self.logger.info("Already translated: %d titles" % len(translatedTitles))
+        whereClause = [r[0] for r in translatedTitles]
+
+        qry = self.session.query(self.titlesClass.id.label("titles_id"), \
+                                  self.titlesClass.title, \
+                                  self.locationClass.id.label("locations_id"), \
+                                  self.locationClass.language.label("language"), \
+                                  self.titlesInLocationsClass.id.label("titles_in_locations_id"), \
+                                  func.min(self.showsClass.date).label("first_show"), \
+                                  func.max(self.showsClass.date).label("last_show")) \
+                           .filter(Titles.id.notin_(whereClause)) \
+                           .filter(Titles.id == TitlesInLocations.titles_ref) \
+                           .filter(TitlesInLocations.locations_ref == Locations.id) \
+                           .filter(TitlesInLocations.locations_ref == locationsId) \
+                           .filter(Shows.titles_in_locations_ref == TitlesInLocations.id) \
+                           .group_by(Titles.id) \
+                           .group_by(TitlesInLocations.id) \
+                           .order_by(Titles.title)
+        recs = qry.all()
+
+        # Build the dictionary in output
+        self.logger.info("Got: %d titles still to translate" % len(recs))
+        output = [{'tid': rec.titles_id, \
+                   'tilid': rec.titles_in_locations_id, \
+                   'title': rec.title, \
+                   'first_show': rec.first_show, \
+                   'last_show': rec.last_show, \
+                   'locations_ref': rec.locations_id, \
+                   'language': rec.language} \
+                  for rec in recs]
+
+        return output
+
     def insertTitleInLocation(self, aTitle = None, locationId = None):
         """
         Inserts a new title for the given location in the db.
