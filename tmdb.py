@@ -55,17 +55,32 @@ class tmdbRestClient(object):
         It automatically append the user's key, so that all requests are through the
         same login.
         """
-        if (url.find('?') == -1):
-            response = requests.get(url + "?" + self._KEY_ARG)
-        else:
-            response = requests.get(url + "&" + self._KEY_ARG)
+        response = None
+
+        try:
+            if (url.find('?') == -1):
+                response = requests.get(url + "?" + self._KEY_ARG)
+            else:
+                response = requests.get(url + "&" + self._KEY_ARG)
+
+        except BaseException as err:
+            self.logger.error("Response was error: %d, %s\n%s" % (response.status_code, response, str(err)))
+            return None
+
+        if response != None and 'x-ratelimit-remaining' in response.headers._store.keys():
+            reqLeft = int(response.headers._store['x-ratelimit-remaining'][1])
+            self.logger.debug("Remaining requests for the next 10 seconds %d" % (reqLeft))
+            if reqLeft <= 3:
+                self.logger.debug("Remaining requests below limit: sleeping for 500ms")
+                sleep(0.5)
 
         if response.status_code > 299:
             self.logger.error("Response was error: %d, %s" % (response.status_code, response))
             # TODO: add error handling bubbling it up to the caller
             # use: json.loads(('{"error": "True", "error message": "No title found."}')
-
-        return json.loads(response.text)
+            return None
+        else:
+            return json.loads(response.text)
 
     def storeConfigurations(self):
         """
@@ -95,17 +110,25 @@ class tmdbRestClient(object):
                               "search/movie?language=%s&query=%s&page=1&include_adult=true" % \
                               (language, title))
 
-        if moviesFound['total_pages'] > 1:
+        if moviesFound == None:
+            self.logger.warn("No response got back when searching for \"%s\"" % (title))
+            return {'results': []}
+
+        elif moviesFound != None and moviesFound['total_results'] > 500:
+            self.logger.warn("Found %d pages for %d records matching \"%s\": skipping (needs manually refined search)." %
+                              (moviesFound['total_pages'], moviesFound['total_results'], title))
+            return {'results': []}
+
+        elif moviesFound != None and moviesFound['total_pages'] > 1:
+            self.logger.info("Requesting %d pages for %d title matching \"%s\"." % (moviesFound['total_pages'], moviesFound['total_results'], title))
             for newPage in range(2, moviesFound['total_pages'] + 1):
                 newMoviesFound = self.get(self._TIMDB_API_URL + \
                                  "search/movie?language=%s&query=%s&include_adult=true&page=%d" % \
                                  (language, title, newPage))
                 moviesFound['results'] += newMoviesFound['results']
                 moviesFound['page'] = newMoviesFound['page']
-                # To avoid hitting TMDB requests limits, space requests 500 msec apart
-                sleep(0.500)
 
-        self.logger.debug("Querying for '%s' returned %d results (expected %d)." % \
+            self.logger.debug("Querying for '%s' returned %d results (expected %d)." % \
                           (title, len(moviesFound['results']), moviesFound['total_results']))
 
         return moviesFound
