@@ -127,7 +127,15 @@ class TranslationMatcher(object):
 
         # get the info from tmdb
         movieRec = self.tmdbClient.searchByTitle(aTitleInLoc['title'], theLanguage)
-        self.logger.debug("Got %d titles for %s" % (len(movieRec['results']), aTitleInLoc['title']))
+
+        # check if the search was narrow enough, if not, return
+        if movieRec['incomplete_result_set']:
+            self.logger.warn("Incomplete set found for \"%s\": ambiguous result needs manual search." %
+                             aTitleInLoc['title'])
+            return 0
+
+        self.logger.debug("Got %d titles for \"%s\"" % (len(movieRec['results']), aTitleInLoc['title']))
+        self.fixTitles(movieRec['results'])
 
         # check the translations returned
         if len(movieRec['results']) == 0:
@@ -192,6 +200,45 @@ class TranslationMatcher(object):
         """
         self.logger.info("Title \"%s\" in %s was originally \"%s\" in %s (%s)" % (titleRec['title'], titleLanguage, originalTitle, originalLanguage, tmdbId))
         self.sources.insertTranslation(titlesRef = titleRec['tid'], lang_from = titleLanguage, tmdb_id = tmdbId)
+
+    def fixTitles(self, theTitles = []):
+        """
+        Ensures that theTitles is a list of dictionaries, each with a valid key set. 
+        """
+        if not isinstance(theTitles, list) :
+            self.logger.warning("Results were not returned in form of a list: %s" % \
+                        (theTitles))
+            theTitles = []
+
+        index = 0
+        for rec in theTitles:
+            fixed = False
+
+            if not isinstance(rec, dict):
+                self.logger.warning("Title was not a dictionary: %s" % (rec))
+                rec = {'id':-1, 'title': "", 'original_title': "", 'original_language': ""}
+                fixed = True
+
+            if 'id' not in rec.keys():
+                self.logger.warning("Title had no id: %s" % (rec))
+                rec['id'] = -1
+                fixed = True
+
+            if 'original_title' not in rec.keys():
+                self.logger.warning("Title had no original title: %s" % (rec))
+                rec['original_title'] = ""
+                fixed = True
+
+            if 'original_language' not in rec.keys():
+                self.logger.warning("Title had no original language: %s" % (rec))
+                rec['original_language'] = ""
+                fixed = True
+
+            if fixed:
+                theTitles[index] = rec
+            index += 1
+
+        return
 
 # ##
 #

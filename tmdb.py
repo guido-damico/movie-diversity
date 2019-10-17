@@ -47,6 +47,57 @@ class tmdbRestClient(object):
 
         self.storeConfigurations()
 
+    def getTitleById(self, movieId = None):
+        """
+        Gets the record of the movie with that id.
+        """
+
+        # Check that we have a valid integer
+        if not stringUtils.isAnInt(movieId):
+            raise restClientError("Invalid Id, need an integer, got %s" % movieId)
+
+        return self.get(self._TIMDB_API_URL + "movie/%s" % (str(movieId)))
+
+    def searchByTitle(self, title = None, language = "en"):
+        """
+        Search the db for a movie by that title in that language, defaults the "en" for English.
+        It walks through the first two pages of the possible responses, returning one dictionary with
+        the first 40 matching records.
+        If there are more results, the flag 'incomplete_result_set' is flagged to "true", and
+        the number of all possible results is stored in 'total_results'. 
+        """
+        moviesFound = self.get(self._TIMDB_API_URL + \
+                              "search/movie?language=%s&query=%s&page=1&include_adult=true" % \
+                              (language, title))
+
+        if moviesFound == None:
+            self.logger.warn("No response got back when searching for \"%s\"" % (title))
+            return {'results': [], 'incomplete_result_set': True}
+
+        elif moviesFound != None and moviesFound['total_pages'] > 1:
+            # skip if we need more than 2 pages (results are too many to match reliably)
+            if moviesFound['total_pages'] > 2:
+                self.logger.info("Too many results to query (%d pages for %d title matching \"%s\"): manual search needed." %
+                                 (moviesFound['total_pages'], moviesFound['total_results'], title))
+                moviesFound['incomplete_result_set'] = True
+
+            else:
+                # 2 pages total: get the second page and return the set
+                moviesFound['incomplete_result_set'] = False
+
+                newMoviesFound = self.get(self._TIMDB_API_URL + \
+                                 "search/movie?language=%s&query=%s&include_adult=true&page=2" % \
+                                 (language, title))
+                moviesFound['results'] += newMoviesFound['results']
+
+        else:
+            # 1 page of results is all there is: we're ok
+            moviesFound['incomplete_result_set'] = False
+
+        self.logger.debug("Search for '%s' returned %d results (out of %d)." % \
+                      (title, len(moviesFound['results']), moviesFound['total_results']))
+        return moviesFound
+
     def get(self, url = None):
         """
         Issue a GET request and returns the response deserialized from json as a dict,
@@ -88,48 +139,3 @@ class tmdbRestClient(object):
         from TMD and stores it locally.
         """
         self._SITE_CONFIG = self.get(self._TIMDB_API_URL + "configuration")
-
-    def getTitleById(self, movieId = None):
-        """
-        Gets the record of the movie with that id.
-        """
-
-        # Check that we have a valid integer
-        if not stringUtils.isAnInt(movieId):
-            raise restClientError("Invalid Id, need an integer, got %s" % movieId)
-
-        return self.get(self._TIMDB_API_URL + "movie/%s" % (str(movieId)))
-
-    def searchByTitle(self, title = None, language = "en"):
-        """
-        Search the db for a movie by that title in that language, defaults the "en" for English.
-        It walks through all the pages of the possible responses, returning one dictionary with all
-        the matching records.
-        """
-        moviesFound = self.get(self._TIMDB_API_URL + \
-                              "search/movie?language=%s&query=%s&page=1&include_adult=true" % \
-                              (language, title))
-
-        if moviesFound == None:
-            self.logger.warn("No response got back when searching for \"%s\"" % (title))
-            return {'results': []}
-
-        elif moviesFound != None and moviesFound['total_results'] > 500:
-            self.logger.warn("Found %d pages for %d records matching \"%s\": skipping (needs manually refined search)." %
-                              (moviesFound['total_pages'], moviesFound['total_results'], title))
-            return {'results': []}
-
-        elif moviesFound != None and moviesFound['total_pages'] > 1:
-            self.logger.info("Requesting %d pages for %d title matching \"%s\"." % (moviesFound['total_pages'], moviesFound['total_results'], title))
-            for newPage in range(2, moviesFound['total_pages'] + 1):
-                newMoviesFound = self.get(self._TIMDB_API_URL + \
-                                 "search/movie?language=%s&query=%s&include_adult=true&page=%d" % \
-                                 (language, title, newPage))
-                moviesFound['results'] += newMoviesFound['results']
-                moviesFound['page'] = newMoviesFound['page']
-
-            self.logger.debug("Querying for '%s' returned %d results (expected %d)." % \
-                          (title, len(moviesFound['results']), moviesFound['total_results']))
-
-        return moviesFound
-
