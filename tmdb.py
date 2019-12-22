@@ -88,7 +88,8 @@ class tmdbRestClient(object):
                 newMoviesFound = self.get(self._TIMDB_API_URL + \
                                  "search/movie?language=%s&query=%s&include_adult=true&page=2" % \
                                  (language, title))
-                moviesFound['results'] += newMoviesFound['results']
+                if (isinstance(newMoviesFound, dict) and 'results' in moviesFound.keys()):
+                    moviesFound['results'] += newMoviesFound['results']
 
         else:
             # 1 page of results is all there is: we're ok
