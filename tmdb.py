@@ -115,7 +115,7 @@ class tmdbRestClient(object):
                 response = requests.get(url + "&" + self._KEY_ARG)
 
         except BaseException as err:
-            self.logger.error("Response was error: %d, %s\n%s" % (response.status_code, response, str(err)))
+            self.logger.error("Response was: %s\n%s" % (str(response), str(err)))
             return None
 
         if response != None and 'x-ratelimit-remaining' in response.headers._store.keys():
