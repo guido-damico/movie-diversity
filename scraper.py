@@ -84,8 +84,21 @@ class Scraper(object):
         # for every active site in the list, get the titles and insert them in the output set
         for site in data:
             if site['active']:
-                titles = titles.union(self.getMoviesTitlesFromURL(url = site['url'],
-                                                                  title_xpath = site['title_xpath']))
+                # scrape the site
+                newTitles = self.getMoviesTitlesFromURL(url = site['url'],
+                                                        title_xpath = site['title_xpath'])
+
+                # IMDB appends the year to the title: cutting off that additional part
+                cleanTitles = set()
+                if site['name'][:7] == "Imdb - ":
+                    for t in newTitles:
+                        self.logger.debug("Renaming \"%s\" to be \"%s\".",
+                                  t, t[:-7])
+                        cleanTitles.add(t[:-7])
+                else:
+                    cleanTitles = newTitles
+
+                titles = titles.union(cleanTitles)
                 self.logger.debug("Got titles from site %s, now I have %d in total.",
                                   site['name'],
                                   len(titles))
