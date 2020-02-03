@@ -276,8 +276,8 @@ class Sources(object):
                            .order_by(Titles.title)
         recs = qry.all()
 
-        # Build the dictionary in output
-        self.logger.info("Got: %d titles still to translate" % len(recs))
+        # Build the dictionary list in output
+        self.logger.info("Got %d titles still to translate in location %d" % (len(recs), locationsId))
         output = [{'tid': rec.titles_id, \
                    'tilid': rec.titles_in_locations_id, \
                    'title': rec.title, \

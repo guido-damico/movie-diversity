@@ -5,6 +5,7 @@ Created on May 22, 2017
 
 Generic utils functions.
 '''
+import datetime
 
 similarityThreshold = 0.7
 
@@ -78,3 +79,10 @@ def cleanupTitle(title = ""):
     title = title.replace("3D", "")
 
     return title.strip()
+
+def turnStringIntoDate(aString = None):
+    """
+        Gets a string with a date in format 'YYYY-MM-DD' and turns it into a datetime.date instance. 
+    """
+    ints = aString.split("-")
+    return datetime.date(int(ints[0]), int(ints[1]), int(ints[2]))

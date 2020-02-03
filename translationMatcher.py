@@ -7,6 +7,7 @@ Module to reconcile the titles across different translations in the movieDiversi
 """
 import logging
 import argparse
+import datetime
 from pprint import pformat
 
 import movieLogger
@@ -173,14 +174,58 @@ class TranslationMatcher(object):
                                            originalTitle = exactMatchWithLang[0]['original_title'],
                                            originalLanguage = exactMatchWithLang[0]['original_language'])
                     output = 1
+
                 else:
-                    # totally ambiguous match: too many exact matches - log and move on
+                    # still ambiguous match with language: too many exact matches
+                    # use date released and popularity to further identify
+                    dateOfShow = stringUtils.turnStringIntoDate(aTitleInLoc['last_show'])
+                    bestMatch = []
+
+                    # fill in possibly missing fields
                     for r in exactMatch:
                         if "release_date" not in r.keys():
                             r['release_date'] = ''
-                    self.logger.warning("Too many exact matches: ambiguous title (%s) yielded:\n%s" % \
-                                    (aTitleInLoc['title'], pformat([(t['title'], t['original_language'], t['release_date']) for t in exactMatch])))
-                    output = 0
+                        if "popularity" not in r.keys():
+                            r['popularity'] = ''
+
+                    # look for the titles which came about in last year
+                    for rec in exactMatchWithLang:
+                        try:
+                            relDate = stringUtils.turnStringIntoDate(rec['release_date'])
+                        except ValueError:
+                            # if there is no release_date field, skip this entry
+                            continue
+
+                        if ((dateOfShow - relDate).days < 365):
+                            bestMatch.append(rec)
+
+                    if len(bestMatch) == 1:
+                        # found one best match: choose it
+                        self.logger.debug("Found best match: %s", pformat(bestMatch))
+                        self.insertTranslation(titleRec = aTitleInLoc, \
+                                               titleLanguage = theLanguage, \
+                                               tmdbId = bestMatch[0]['id'],
+                                               originalTitle = bestMatch[0]['original_title'],
+                                               originalLanguage = bestMatch[0]['original_language'])
+                        output = 1
+
+                    elif len(bestMatch) > 1:
+                        # no recent titles, pick the most popular one
+                        bestSorted = sorted(exactMatchWithLang, key = lambda k: k['popularity'])
+                        bestSortedIdx = len(bestSorted) - 1
+                        self.logger.debug("Guessed best match: %s", pformat(bestSorted[bestSortedIdx]))
+                        self.insertTranslation(titleRec = aTitleInLoc, \
+                                               titleLanguage = theLanguage, \
+                                               tmdbId = bestSorted[bestSortedIdx]['id'],
+                                               originalTitle = bestSorted[bestSortedIdx]['original_title'],
+                                               originalLanguage = bestSorted[bestSortedIdx]['original_language'])
+                        output = 1
+
+                    else:
+                        # no best match: log and move on
+                        self.logger.warning("Too many exact matches: ambiguous title (%s) yielded:\n%s" % \
+                            (aTitleInLoc['title'], pformat([(t['title'], t['original_language'], t['release_date'], t['popularity']) for t in exactMatch])))
+                        output = 0
 
             else:
                 # unique exact match: match found
