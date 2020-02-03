@@ -210,7 +210,7 @@ class TranslationMatcher(object):
                         output = 1
 
                     elif len(bestMatch) > 1:
-                        # no recent titles, pick the most popular one
+                        # too many recent titles, pick the most popular one
                         bestSorted = sorted(exactMatchWithLang, key = lambda k: k['popularity'])
                         bestSortedIdx = len(bestSorted) - 1
                         self.logger.debug("Guessed best match: %s", pformat(bestSorted[bestSortedIdx]))
