@@ -224,7 +224,7 @@ class TranslationMatcher(object):
                     else:
                         # no best match: log and move on
                         self.logger.warning("Too many exact matches: ambiguous title (%s) yielded:\n%s" % \
-                            (aTitleInLoc['title'], pformat([(t['title'], t['original_language'], t['release_date'], t['popularity']) for t in exactMatch])))
+                            (aTitleInLoc['title'], pformat([(t['title'], t['original_language'], t['release_date'], t['popularity'], t['id']) for t in exactMatch])))
                         output = 0
 
             else:
