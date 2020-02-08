@@ -45,7 +45,8 @@ class TranslationMatcher(object):
                  'new': 0,
                  'existing': 0,
                  'ambiguous': 0,
-                 'not found': 0
+                 'not found': 0,
+                 'locally added':0
                 }
 
         # build a list/map of all titles and their location
@@ -65,25 +66,46 @@ class TranslationMatcher(object):
                 # LOCAL CHECKS:
                 # verify if this title and language are already in, insert it if needed,
                 # updates the stats accordingly
-                check = self.cheeckLocallyAndInsertTitle(aTitleInLoc = aTitleInLoc, theLanguage = loc.language)
-                if check == 0:
+
+                checkLocal = self.cheeckLocallyAndInsertTitle(aTitleInLoc = aTitleInLoc, theLanguage = loc.language)
+
+                if checkLocal == 0:
                     stats['existing'] += 1
-                elif check == 1:
+                elif checkLocal == 1:
                     stats['new'] += 1
 
                 ####
                 # TMDB REMOTE CHECKS:
-                # new title, look it up on imdb
+                # new title, look it up on tmdb, insert if a translation is found
                 else:
-                    check = self.checkTMBDAndInsertTitle(aTitleInLoc = aTitleInLoc, theLanguage = loc.language)
-                    if check == 0:
+
+                    checkRemote = self.checkTMBDAndInsertTitle(aTitleInLoc = aTitleInLoc, theLanguage = loc.language)
+
+                    if checkRemote == 0:
                         stats['ambiguous'] += 1
-                    elif check == 1:
+                    elif checkRemote == 1:
                         stats['new'] += 1
-                    elif check == -1:
+                    elif checkRemote == -1:
                         stats['not found'] += 1
 
-        self.logger.info("End run:\n\t{new:5} new translations\n\t{existing:5} existing\n\t{ambiguous:5} ambiguous\n\t{not found:5} not found"
+                ####
+                # If this title is not found anywhere, add it locally with a
+                # negative tmdb_id, to track it
+                if checkLocal == -1 and checkRemote == -1:
+                    smallest_id = self.sources.getMinTmdb_idTranslation()
+                    if smallest_id == None or smallest_id > 0:
+                        smallest_id = 0
+
+                    new_id = smallest_id - 1
+                    self.logger.debug("Inserting title \"%s\" as a new unknown one with tmdb_id = %d" % (aTitleInLoc['title'], new_id))
+                    self.insertTranslation(titleRec = aTitleInLoc, \
+                                           titleLanguage = loc.language, \
+                                           tmdbId = new_id,
+                                           originalTitle = aTitleInLoc['title'],
+                                           originalLanguage = loc.language)
+                    stats['locally added'] += 1
+
+        self.logger.info("Totals:\n\t{new:5} new translations\n\t{existing:5} existing\n\t{ambiguous:5} ambiguous\n\t{not found:5} not found\n\t{locally added:5} locally added"
                         .format_map(stats))
 
     def cheeckLocallyAndInsertTitle(self, aTitleInLoc = None, theLanguage = None):

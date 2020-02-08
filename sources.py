@@ -432,6 +432,16 @@ class Sources(object):
 
         return output
 
+    def getMinTmdb_idTranslation(self):
+        """
+            Returns the lowest TMDB_ID value in the table.
+            Used to insert negative values for titles not yet in the remote db.
+        """
+        qry = self.session.query(func.min(self.translationClass.tmdb_id).label("smallest_id"))
+        recs = qry.all()
+
+        return recs[0].smallest_id
+
     def insertTranslation(self, titlesRef = None, lang_from = None, tmdb_id = None):
         """
         Links a new translation for the given title_ref in the specified language for the movie with that tmdb_id.
